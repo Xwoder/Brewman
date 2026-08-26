@@ -6,8 +6,9 @@ Brewman is a terminal user interface (TUI) built with **Rust + Ratatui** for man
 
 ## Features
 
-- **Unified package view**: Switch between All / Formulae / Casks with `Tab` (or `1` / `2` / `3`)
+- **Unified package view**: Switch between All / Formulae / Casks / Outdated with `Tab` (or `1` / `2` / `3` / `4` / `o`)
 - **Clear version display**: Shows current, latest, and candidate versions for every package (HEAD builds, multiple installed versions)
+- **Outdated-only view**: Filter the list to show only outdated packages (including auto-updates casks and `:latest`/HEAD installs, via `brew outdated --greedy`)
 - **One-key upgrades**: Upgrade a single package or all outdated packages at once (with confirmation prompts)
 - **Safe uninstall**: Uninstalls require explicit confirmation (Y/N)
 - **Source update**: Built-in `brew update` to sync Homebrew sources and auto-refresh the list
@@ -19,7 +20,7 @@ Brewman is a terminal user interface (TUI) built with **Rust + Ratatui** for man
 
 ```
 ┌ Brewman — Homebrew Package Manager (Formula + Cask) ────────┐
-│ All │ Formulae │ Casks                    Installed 363   Outdated 1   Current: ollama │
+│ All │ Formulae │ Casks │ Outdated       Installed 363   Outdated 1   Current: ollama │
 ├──────────────────┬──────────────────────────────────────────┤
 │ ▸ ollama 0.32.15 → 0.33.0 [outdated]  │ Name       : ollama                        │
 │   abseil 20260817.0                   │ Type       : formula                      │
@@ -28,7 +29,7 @@ Brewman is a terminal user interface (TUI) built with **Rust + Ratatui** for man
 │                                       │ Candidates : HEAD: HEAD                  │
 │                                       │ Status     : outdated, installed on request │
 └──────────────────────────────────────┴───────────────────────────────────────────┘
-↑/↓ or j/k Navigate | Tab Switch view (1 All 2 Formulae 3 Casks) | u Upgrade | a Upgrade all | x Uninstall | r Update sources | l Reload | q Quit
+↑/↓ or j/k Navigate | Tab Switch view | u Upgrade | a Upgrade all | x Uninstall | r Update sources | l Reload | q Quit
 ```
 
 ## Installation
@@ -60,7 +61,7 @@ cargo run
 |-----|--------|
 | `↑` / `↓` or `j` / `k` | Navigate selection |
 | `g` / `G` | Jump to top / bottom of the list |
-| `Tab` (or `1` `2` `3`) | Switch All / Formulae / Casks |
+| `Tab` (or `1` `2` `3` `4` / `o`) | Switch All / Formulae / Casks / Outdated |
 | `u` | Upgrade selected package |
 | `a` | Upgrade all outdated packages |
 | `x` (or `d`) | Uninstall selected package |
