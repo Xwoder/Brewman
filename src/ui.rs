@@ -8,7 +8,7 @@ use crate::app::App;
 use crate::model::{Kind, Package};
 
 const HELP: &str =
-    "↑/↓ or j/k Navigate | Tab Switch view (1 All 2 Formulae 3 Casks 4 Outdated) | u Upgrade | a Upgrade all | x Uninstall | r Update sources | l Reload | q Quit";
+    "↑/↓ or j/k Navigate | Tab Switch view | u Upgrade | a Upgrade all | x Uninstall | r Update sources | l Reload | q Quit";
 
 pub fn draw(frame: &mut Frame, app: &App) {
     let area = frame.area();
