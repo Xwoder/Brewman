@@ -9,7 +9,9 @@ Brewman is a terminal user interface (TUI) built with **Rust + Ratatui** for man
 - **Unified package view**: Switch between All / Formulae / Casks / Outdated with `Tab` (or `1` / `2` / `3` / `4` / `o`)
 - **Clear version display**: Shows current, latest, and candidate versions for every package (HEAD builds, multiple installed versions)
 - **Outdated-only view**: Filter the list to show only outdated packages (including auto-updates casks and `:latest`/HEAD installs, via `brew outdated --greedy`)
-- **One-key upgrades**: Upgrade a single package or all outdated packages at once (with confirmation prompts)
+- **One-key upgrades**: Upgrade a single package, a multi-selected group, or all outdated packages at once (with confirmation prompts)
+- **Batch selection**: Mark multiple packages with `Space` and upgrade them together with a single `u` (formulae and casks are grouped into separate `brew upgrade` calls)
+- **Live activity panel**: Bottom panel shows the command currently running plus a colored history of recent results (done / failed)
 - **Safe uninstall**: Uninstalls require explicit confirmation (Y/N)
 - **Source update**: Built-in `brew update` to sync Homebrew sources and auto-refresh the list
 - **Non-blocking design**: brew commands run sequentially on a background worker thread; the UI stays responsive with live status feedback
@@ -22,14 +24,17 @@ Brewman is a terminal user interface (TUI) built with **Rust + Ratatui** for man
 ┌ Brewman — Homebrew Package Manager (Formula + Cask) ────────┐
 │ All │ Formulae │ Casks │ Outdated       Installed 363   Outdated 1   Current: ollama │
 ├──────────────────┬──────────────────────────────────────────┤
-│ ▸ ollama 0.32.15 → 0.33.0 [outdated]  │ Name       : ollama                        │
-│   abseil 20260817.0                   │ Type       : formula                      │
-│   adobe-acrobat-reader [auto-update]  │ Current    : 0.32.15                      │
-│   ...                                 │ Latest     : 0.33.0                       │
-│                                       │ Candidates : HEAD: HEAD                  │
-│                                       │ Status     : outdated, installed on request │
-└──────────────────────────────────────┴───────────────────────────────────────────┘
-↑/↓ or j/k Navigate | Tab Switch view | u Upgrade | a Upgrade all | x Uninstall | r Update sources | l Reload | q Quit
+│ ▸ ✓ ollama 0.32.15 → 0.33.0 [outdated] │ Name     : ollama                         │
+│   ✓ abseil 20260817.0                  │ Type     : formula                       │
+│     adobe-acrobat-reader [auto-update] │ Current  : 0.32.15                       │
+│     ...                                │ Latest   : 0.33.0                        │
+│                                        │ Status   : outdated, installed on request │
+├──────────────────┴──────────────────────────────────────────┤
+│ ▶ Upgrading ollama...                                       │
+│ Upgrade ollama: 0.32.15 → 0.33.0 completed                  │
+│ brew update completed                                       │
+└─────────────────────────────────────────────────────────────┘
+↑/↓ or j/k Navigate | Space Select | Tab Switch view | u Upgrade | a Upgrade all | x Uninstall | r Update sources | l Reload | q Quit
 ```
 
 ## Installation
@@ -62,7 +67,8 @@ cargo run
 | `↑` / `↓` or `j` / `k` | Navigate selection |
 | `g` / `G` | Jump to top / bottom of the list |
 | `Tab` (or `1` `2` `3` `4` / `o`) | Switch All / Formulae / Casks / Outdated |
-| `u` | Upgrade selected package |
+| `Space` | Select / deselect the current package (for batch upgrade) |
+| `u` | Upgrade selected package(s) — all selected at once when any are marked |
 | `a` | Upgrade all outdated packages |
 | `x` (or `d`) | Uninstall selected package |
 | `r` | Update sources (`brew update`) |
@@ -70,7 +76,7 @@ cargo run
 | `PgUp` / `PgDn` | Scroll the details panel |
 | `q` / `Ctrl-C` | Quit |
 
-Confirmations: Upgrade / uninstall / upgrade-all first prompt for confirmation (`Y` to confirm, `N` or `Esc` to cancel).
+Confirmations: Upgrade (single / multi-selected / all), and uninstall all first prompt for confirmation (`Y` to confirm, `N` or `Esc` to cancel). Note: switching tabs or reloading the list clears the current selection.
 
 ## Project Structure
 
@@ -80,7 +86,7 @@ src/
 ├── app.rs    # App state, key handling, background message consumption
 ├── brew.rs   # Background worker thread running brew commands sequentially (mpsc)
 ├── model.rs  # Package data model + brew info/outdated JSON v2 parsing
-└── ui.rs     # Ratatui rendering (top bar / Tabs / list / details / help bar)
+└── ui.rs     # Ratatui rendering (top bar / Tabs / list / details / activity panel / help bar)
 ```
 
 ## Testing
