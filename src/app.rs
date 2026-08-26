@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::sync::mpsc::{Receiver, Sender};
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -46,6 +47,8 @@ pub enum PendingAction {
     Upgrade(usize),
     Uninstall(usize),
     UpgradeAll,
+    /// 升级选中的多个包：(包名, 类型)
+    UpgradeSelected(Vec<(String, Kind)>),
 }
 
 pub struct Confirm {
@@ -62,6 +65,8 @@ pub struct App {
     pub filtered: Vec<usize>,
     pub tab: Tab,
     pub selected: usize,
+    /// 被选中的包（packages 索引，Space 键切换）
+    pub selected_set: BTreeSet<usize>,
     pub detail_scroll: u16,
     /// 正在执行的操作描述（None 表示空闲）
     pub busy: Option<String>,
@@ -84,6 +89,7 @@ impl App {
             filtered: Vec::new(),
             tab: Tab::All,
             selected: 0,
+            selected_set: BTreeSet::new(),
             detail_scroll: 0,
             busy: None,
             status: "Starting...".into(),
@@ -104,6 +110,8 @@ impl App {
     }
 
     fn apply_filter(&mut self) {
+        // 过滤条件或数据变化后，旧的选中索引可能失效，统一清空
+        self.selected_set.clear();
         self.filtered = self
             .packages
             .iter()
@@ -168,6 +176,12 @@ impl App {
             PendingAction::UpgradeAll => {
                 self.start_job("Upgrading all outdated packages...".into(), Job::UpgradeAll);
             }
+            PendingAction::UpgradeSelected(pkgs) => {
+                self.start_job(
+                    format!("Upgrading {} selected packages...", pkgs.len()),
+                    Job::UpgradeSelected(pkgs),
+                );
+            }
         }
     }
 
@@ -206,6 +220,14 @@ impl App {
             KeyCode::Char('G') => {
                 self.selected = self.filtered.len().saturating_sub(1);
             }
+            // 空格：选中/取消选中当前行
+            KeyCode::Char(' ') => {
+                if let Some(&i) = self.filtered.get(self.selected)
+                    && !self.selected_set.remove(&i)
+                {
+                    self.selected_set.insert(i);
+                }
+            }
             KeyCode::PageDown => self.detail_scroll = self.detail_scroll.saturating_add(5),
             KeyCode::PageUp => self.detail_scroll = self.detail_scroll.saturating_sub(5),
             KeyCode::Tab => self.set_tab(self.tab.next()),
@@ -213,9 +235,36 @@ impl App {
             KeyCode::Char('1') => self.set_tab(Tab::All),
             KeyCode::Char('2') => self.set_tab(Tab::Formula),
             KeyCode::Char('3') => self.set_tab(Tab::Cask),
-            KeyCode::Char('4') | KeyCode::Char('o') | KeyCode::Char('O') => self.set_tab(Tab::Outdated),
+            KeyCode::Char('4') | KeyCode::Char('o') | KeyCode::Char('O') => {
+                self.set_tab(Tab::Outdated)
+            }
             KeyCode::Char('u') | KeyCode::Char('U') => {
-                if let Some(pkg) = self.current() {
+                if !self.selected_set.is_empty() {
+                    // 有选中项：统一升级选中的包
+                    let pkgs: Vec<(String, Kind)> = self
+                        .selected_set
+                        .iter()
+                        .filter_map(|&i| self.packages.get(i))
+                        .map(|p| (p.name.clone(), p.kind))
+                        .collect();
+                    if !pkgs.is_empty() {
+                        let names: Vec<&str> = pkgs.iter().map(|(n, _)| n.as_str()).collect();
+                        let desc = if names.len() > 5 {
+                            format!(
+                                "Upgrade {} selected packages: {} …",
+                                names.len(),
+                                names[..5].join(", ")
+                            )
+                        } else {
+                            format!(
+                                "Upgrade {} selected packages: {}",
+                                names.len(),
+                                names.join(", ")
+                            )
+                        };
+                        self.confirm_action(desc, PendingAction::UpgradeSelected(pkgs));
+                    }
+                } else if let Some(pkg) = self.current() {
                     let desc = if pkg.outdated {
                         format!(
                             "Upgrade {}: {} → {}",
@@ -232,7 +281,12 @@ impl App {
             }
             KeyCode::Char('x') | KeyCode::Char('X') | KeyCode::Char('d') | KeyCode::Char('D') => {
                 if let Some(pkg) = self.current() {
-                    let desc = format!("Uninstall {} ({} {})", pkg.name, pkg.current_version.as_deref().unwrap_or("?"), pkg.kind.label());
+                    let desc = format!(
+                        "Uninstall {} ({} {})",
+                        pkg.name,
+                        pkg.current_version.as_deref().unwrap_or("?"),
+                        pkg.kind.label()
+                    );
                     let i = self.selected;
                     self.confirm_action(desc, PendingAction::Uninstall(i));
                 }

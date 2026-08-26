@@ -1,14 +1,13 @@
+use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, List, ListItem, ListState, Paragraph, Tabs, Wrap};
-use ratatui::Frame;
 
 use crate::app::App;
 use crate::model::{Kind, Package};
 
-const HELP: &str =
-    "↑/↓ or j/k Navigate | Tab Switch view | u Upgrade | a Upgrade all | x Uninstall | r Update sources | l Reload | q Quit";
+const HELP: &str = "↑/↓ or j/k Navigate | Space Select | Tab Switch view | u Upgrade | a Upgrade all | x Uninstall | r Update sources | l Reload | q Quit";
 
 pub fn draw(frame: &mut Frame, app: &App) {
     let area = frame.area();
@@ -27,14 +26,21 @@ pub fn draw(frame: &mut Frame, app: &App) {
 // ---------- 顶部 ----------
 
 fn draw_top(frame: &mut Frame, app: &App, area: Rect) {
-    let rows = Layout::vertical([Constraint::Length(1), Constraint::Length(1), Constraint::Length(1)])
-        .split(area);
+    let rows = Layout::vertical([
+        Constraint::Length(1),
+        Constraint::Length(1),
+        Constraint::Length(1),
+    ])
+    .split(area);
 
     // 第一行：标题 + 统计
-    let line1 = Layout::horizontal([Constraint::Percentage(65), Constraint::Percentage(35)]).split(rows[0]);
+    let line1 =
+        Layout::horizontal([Constraint::Percentage(65), Constraint::Percentage(35)]).split(rows[0]);
     let title = Paragraph::new(Line::from(Span::styled(
         "Brewman — Homebrew Package Manager (Formula + Cask)",
-        Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+        Style::default()
+            .fg(Color::Cyan)
+            .add_modifier(Modifier::BOLD),
     )));
     frame.render_widget(title, line1[0]);
 
@@ -43,14 +49,20 @@ fn draw_top(frame: &mut Frame, app: &App, area: Rect) {
         .map(|p| p.name.clone())
         .unwrap_or_else(|| "—".into());
     let stats = Paragraph::new(Line::from(Span::styled(
-        format!("Installed {}   Outdated {}   Current: {}", app.packages.len(), app.outdated_count, current),
+        format!(
+            "Installed {}   Outdated {}   Current: {}",
+            app.packages.len(),
+            app.outdated_count,
+            current
+        ),
         Style::default().fg(Color::DarkGray),
     )))
     .alignment(Alignment::Right);
     frame.render_widget(stats, line1[1]);
 
     // 第二行：类别 Tabs + 忙碌指示
-    let line2 = Layout::horizontal([Constraint::Percentage(70), Constraint::Percentage(30)]).split(rows[1]);
+    let line2 =
+        Layout::horizontal([Constraint::Percentage(70), Constraint::Percentage(30)]).split(rows[1]);
     let tabs = Tabs::new(["All", "Formulae", "Casks", "Outdated"])
         .select(app.tab.index())
         .style(Style::default().fg(Color::DarkGray))
@@ -84,7 +96,8 @@ fn draw_top(frame: &mut Frame, app: &App, area: Rect) {
 // ---------- 中部 ----------
 
 fn draw_middle(frame: &mut Frame, app: &App, area: Rect) {
-    let cols = Layout::horizontal([Constraint::Percentage(42), Constraint::Percentage(58)]).split(area);
+    let cols =
+        Layout::horizontal([Constraint::Percentage(42), Constraint::Percentage(58)]).split(area);
     draw_package_list(frame, app, cols[0]);
     draw_detail(frame, app, cols[1]);
 }
@@ -93,14 +106,23 @@ fn draw_package_list(frame: &mut Frame, app: &App, area: Rect) {
     let items: Vec<ListItem> = app
         .filtered
         .iter()
-        .map(|&i| ListItem::new(pkg_line(&app.packages[i])))
+        .map(|&i| ListItem::new(pkg_line(&app.packages[i], app.selected_set.contains(&i))))
         .collect();
 
-    let title = format!(
-        " Packages  {} / {}  ",
-        app.filtered.len(),
-        app.packages.len()
-    );
+    let title = if app.selected_set.is_empty() {
+        format!(
+            " Packages  {} / {}  ",
+            app.filtered.len(),
+            app.packages.len()
+        )
+    } else {
+        format!(
+            " Packages  {} / {}  ({} selected)  ",
+            app.filtered.len(),
+            app.packages.len(),
+            app.selected_set.len()
+        )
+    };
     let list = List::new(items)
         .block(Block::bordered().title(title))
         .highlight_style(Style::default().add_modifier(Modifier::REVERSED))
@@ -115,8 +137,16 @@ fn draw_package_list(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_stateful_widget(list, area, &mut state);
 }
 
-fn pkg_line(pkg: &Package) -> Line<'static> {
+fn pkg_line(pkg: &Package, selected: bool) -> Line<'static> {
     let mut spans: Vec<Span<'static>> = Vec::new();
+
+    // 选中标记（未选中用空格占位保持对齐）
+    spans.push(Span::styled(
+        if selected { "✓ " } else { "  " },
+        Style::default()
+            .fg(Color::Green)
+            .add_modifier(Modifier::BOLD),
+    ));
 
     let name_style = if pkg.outdated {
         Style::default()
@@ -134,10 +164,7 @@ fn pkg_line(pkg: &Package) -> Line<'static> {
             format!(" {cur}"),
             Style::default().fg(Color::DarkGray),
         ));
-        spans.push(Span::styled(
-            " → ",
-            Style::default().fg(Color::DarkGray),
-        ));
+        spans.push(Span::styled(" → ", Style::default().fg(Color::DarkGray)));
         spans.push(Span::styled(
             latest,
             Style::default()
@@ -161,10 +188,7 @@ fn pkg_line(pkg: &Package) -> Line<'static> {
         spans.push(Span::styled(" [pinned]", Style::default().fg(Color::Cyan)));
     }
     if pkg.installed_as_dependency {
-        spans.push(Span::styled(
-            " [dep]",
-            Style::default().fg(Color::DarkGray),
-        ));
+        spans.push(Span::styled(" [dep]", Style::default().fg(Color::DarkGray)));
     }
     if pkg.auto_updates {
         spans.push(Span::styled(
@@ -237,7 +261,9 @@ fn build_detail(pkg: &Package) -> String {
     s.push_str(&format!(
         "{:<16}: {}\n",
         "Current",
-        pkg.current_version.as_deref().unwrap_or("not installed/unknown")
+        pkg.current_version
+            .as_deref()
+            .unwrap_or("not installed/unknown")
     ));
     s.push_str(&format!(
         "{:<16}: {}\n",
@@ -281,11 +307,7 @@ fn build_detail(pkg: &Package) -> String {
         s.push_str(&format!("{:<16}: {h}\n", "Homepage"));
     }
     if let Some(c) = &pkg.caveats {
-        s.push_str(&format!(
-            "{:<16}: {}\n",
-            "Notes",
-            c.replace('\n', " ")
-        ));
+        s.push_str(&format!("{:<16}: {}\n", "Notes", c.replace('\n', " ")));
     }
     s
 }

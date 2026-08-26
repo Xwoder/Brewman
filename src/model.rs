@@ -214,8 +214,8 @@ struct OutdatedCask {
 
 /// 解析 `brew outdated --json=v2`，返回 (包名, 最新版本) 列表
 pub fn parse_outdated(json: &str) -> Result<Vec<(String, String)>, String> {
-    let out: OutdatedV2 =
-        serde_json::from_str(json).map_err(|e| format!("Failed to parse brew outdated JSON: {e}"))?;
+    let out: OutdatedV2 = serde_json::from_str(json)
+        .map_err(|e| format!("Failed to parse brew outdated JSON: {e}"))?;
     let mut entries = Vec::new();
     for f in out.formulae {
         entries.push((f.name, f.current_version));
