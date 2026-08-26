@@ -82,7 +82,8 @@ pub fn worker(job_rx: Receiver<Job>, msg_tx: Sender<Msg>) {
             }
             Job::UpgradeAll => {
                 let _ = msg_tx.send(Msg::Loading);
-                let (label, ok, output) = run("Upgrade all outdated packages (brew upgrade)", &["upgrade"]);
+                let (label, ok, output) =
+                    run("Upgrade all outdated packages (brew upgrade --greedy)", &["upgrade", "--greedy"]);
                 let _ = msg_tx.send(Msg::Done { label, ok, output });
                 let _ = msg_tx.send(Msg::Reload);
             }
@@ -111,7 +112,8 @@ fn load_packages() -> Result<Vec<Package>, String> {
 }
 
 fn load_outdated() -> Result<Vec<(String, String)>, String> {
-    let out = exec(&["outdated".into(), "--json=v2".into()])?;
+    // --greedy：把 auto_updates 的 cask、:latest / HEAD 安装的包也纳入过时检测
+    let out = exec(&["outdated".into(), "--json=v2".into(), "--greedy".into()])?;
     model::parse_outdated(&out)
 }
 
