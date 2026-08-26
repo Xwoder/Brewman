@@ -8,7 +8,7 @@ use crate::app::App;
 use crate::model::{Kind, Package};
 
 const HELP: &str =
-    "↑/↓ or j/k Navigate | Tab Switch view (1 All 2 Formulae 3 Casks) | u Upgrade | a Upgrade all | x Uninstall | r Update sources | l Reload | q Quit";
+    "↑/↓ or j/k Navigate | Tab Switch view (1 All 2 Formulae 3 Casks 4 Outdated) | u Upgrade | a Upgrade all | x Uninstall | r Update sources | l Reload | q Quit";
 
 pub fn draw(frame: &mut Frame, app: &App) {
     let area = frame.area();
@@ -51,7 +51,7 @@ fn draw_top(frame: &mut Frame, app: &App, area: Rect) {
 
     // 第二行：类别 Tabs + 忙碌指示
     let line2 = Layout::horizontal([Constraint::Percentage(70), Constraint::Percentage(30)]).split(rows[1]);
-    let tabs = Tabs::new(["All", "Formulae", "Casks"])
+    let tabs = Tabs::new(["All", "Formulae", "Casks", "Outdated"])
         .select(app.tab.index())
         .style(Style::default().fg(Color::DarkGray))
         .highlight_style(
