@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, VecDeque};
 use std::sync::mpsc::{Receiver, Sender};
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -56,6 +56,21 @@ pub struct Confirm {
     pub action: PendingAction,
 }
 
+/// 活动日志的类型（用于 UI 着色）
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ActivityKind {
+    Done,
+    Failed,
+    Error,
+}
+
+/// 一条活动日志（命令执行结果等）
+#[derive(Debug, Clone)]
+pub struct Activity {
+    pub kind: ActivityKind,
+    pub text: String,
+}
+
 pub struct App {
     job_tx: Sender<Job>,
     msg_rx: Receiver<Msg>,
@@ -78,6 +93,8 @@ pub struct App {
     pub last_error: Option<String>,
     /// 最近一次成功命令的输出摘要（显示在详情面板）
     pub last_output: Option<String>,
+    /// 活动日志（最新在尾部，UI 反转显示）
+    pub activities: VecDeque<Activity>,
 }
 
 impl App {
@@ -98,7 +115,17 @@ impl App {
             should_quit: false,
             last_error: None,
             last_output: None,
+            activities: VecDeque::new(),
         }
+    }
+
+    /// 追加一条活动日志（保留最近 MAX_ACTIVITIES 条）
+    fn push_activity(&mut self, kind: ActivityKind, text: String) {
+        const MAX_ACTIVITIES: usize = 20;
+        if self.activities.len() >= MAX_ACTIVITIES {
+            self.activities.pop_front();
+        }
+        self.activities.push_back(Activity { kind, text });
     }
 
     pub fn request_load(&self) {
@@ -371,9 +398,11 @@ impl App {
                     if ok {
                         self.last_output = Some(summarize(&output, 300));
                         self.status = format!("{label} completed successfully");
+                        self.push_activity(ActivityKind::Done, format!("{label} completed"));
                     } else {
                         self.last_error = Some(summarize(&output, 500));
                         self.status = format!("{label} failed (see right panel for details)");
+                        self.push_activity(ActivityKind::Failed, format!("{label} failed"));
                     }
                 }
                 Msg::Reload => {
@@ -383,6 +412,7 @@ impl App {
                     self.busy = None;
                     self.last_error = Some(e.clone());
                     self.status = format!("Error: {e}");
+                    self.push_activity(ActivityKind::Error, format!("Error: {e}"));
                 }
             }
         }

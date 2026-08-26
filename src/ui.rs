@@ -4,7 +4,7 @@ use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, List, ListItem, ListState, Paragraph, Tabs, Wrap};
 
-use crate::app::App;
+use crate::app::{ActivityKind, App};
 use crate::model::{Kind, Package};
 
 const HELP: &str = "↑/↓ or j/k Navigate | Space Select | Tab Switch view | u Upgrade | a Upgrade all | x Uninstall | r Update sources | l Reload | q Quit";
@@ -13,14 +13,16 @@ pub fn draw(frame: &mut Frame, app: &App) {
     let area = frame.area();
     let chunks = Layout::vertical([
         Constraint::Length(3),
-        Constraint::Min(1),
+        Constraint::Min(0),
+        Constraint::Length(8),
         Constraint::Length(1),
     ])
     .split(area);
 
     draw_top(frame, app, chunks[0]);
     draw_middle(frame, app, chunks[1]);
-    draw_bottom(frame, app, chunks[2]);
+    draw_activity(frame, app, chunks[2]);
+    draw_bottom(frame, app, chunks[3]);
 }
 
 // ---------- 顶部 ----------
@@ -310,6 +312,35 @@ fn build_detail(pkg: &Package) -> String {
         s.push_str(&format!("{:<16}: {}\n", "Notes", c.replace('\n', " ")));
     }
     s
+}
+
+// ---------- 活动面板 ----------
+
+fn draw_activity(frame: &mut Frame, app: &App, area: Rect) {
+    let mut lines: Vec<Line> = Vec::new();
+
+    // 第一行：正在进行的活动
+    if let Some(busy) = &app.busy {
+        lines.push(Line::from(Span::styled(
+            format!("▶ {busy}"),
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        )));
+    }
+
+    // 历史记录（最新在上，最多填满面板高度）
+    let room = area.height.saturating_sub(2) as usize;
+    for a in app.activities.iter().rev().take(room) {
+        let style = match a.kind {
+            ActivityKind::Done => Style::default().fg(Color::Green),
+            ActivityKind::Failed | ActivityKind::Error => Style::default().fg(Color::Red),
+        };
+        lines.push(Line::from(Span::styled(a.text.clone(), style)));
+    }
+
+    let block = Block::bordered().title(" Activity ");
+    frame.render_widget(Paragraph::new(lines).block(block), area);
 }
 
 // ---------- 底部 ----------
