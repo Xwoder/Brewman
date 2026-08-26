@@ -61,7 +61,7 @@ pub fn worker(job_rx: Receiver<Job>, msg_tx: Sender<Msg>) {
             }
             Job::Update => {
                 let _ = msg_tx.send(Msg::Loading);
-                let (label, ok, output) = run("更新软件源（brew update）", &["update"]);
+                let (label, ok, output) = run("Update software sources (brew update)", &["update"]);
                 let _ = msg_tx.send(Msg::Done { label, ok, output });
                 let _ = msg_tx.send(Msg::Reload);
             }
@@ -71,7 +71,7 @@ pub fn worker(job_rx: Receiver<Job>, msg_tx: Sender<Msg>) {
                     Kind::Formula => vec!["upgrade".to_string(), name.clone()],
                     Kind::Cask => vec!["upgrade".to_string(), "--cask".to_string(), name.clone()],
                 };
-                let label = format!("升级 {}（brew {}）", name, args.join(" "));
+                let label = format!("Upgrade {} (brew {})", name, args.join(" "));
                 let (ok, output) = to_pair(exec(&args));
                 let _ = msg_tx.send(Msg::Done {
                     label,
@@ -82,7 +82,7 @@ pub fn worker(job_rx: Receiver<Job>, msg_tx: Sender<Msg>) {
             }
             Job::UpgradeAll => {
                 let _ = msg_tx.send(Msg::Loading);
-                let (label, ok, output) = run("升级全部过时包（brew upgrade）", &["upgrade"]);
+                let (label, ok, output) = run("Upgrade all outdated packages (brew upgrade)", &["upgrade"]);
                 let _ = msg_tx.send(Msg::Done { label, ok, output });
                 let _ = msg_tx.send(Msg::Reload);
             }
@@ -92,7 +92,7 @@ pub fn worker(job_rx: Receiver<Job>, msg_tx: Sender<Msg>) {
                     Kind::Formula => vec!["uninstall".to_string(), name.clone()],
                     Kind::Cask => vec!["uninstall".to_string(), "--cask".to_string(), name.clone()],
                 };
-                let label = format!("卸载 {}（brew {}）", name, args.join(" "));
+                let label = format!("Uninstall {} (brew {})", name, args.join(" "));
                 let (ok, output) = to_pair(exec(&args));
                 let _ = msg_tx.send(Msg::Done {
                     label,
@@ -134,7 +134,7 @@ fn exec(args: &[String]) -> Result<String, String> {
     let output = Command::new("brew")
         .args(args)
         .output()
-        .map_err(|e| format!("无法启动 brew：{e}（请确认已安装 Homebrew 且在 PATH 中）"))?;
+        .map_err(|e| format!("Failed to run brew: {e} (make sure Homebrew is installed and on PATH)"))?;
 
     if output.status.success() {
         Ok(String::from_utf8_lossy(&output.stdout).into_owned())
@@ -142,7 +142,7 @@ fn exec(args: &[String]) -> Result<String, String> {
         let err = String::from_utf8_lossy(&output.stderr).into_owned();
         if err.trim().is_empty() {
             Err(format!(
-                "brew {} 失败（退出码 {:?}）",
+                "brew {} failed (exit code {:?})",
                 args.join(" "),
                 output.status.code()
             ))
@@ -172,13 +172,13 @@ mod tests {
         while Instant::now() < deadline {
             match msg_rx.recv_timeout(Duration::from_secs(5)) {
                 Ok(Msg::Packages(pkgs)) => {
-                    assert!(!pkgs.is_empty(), "本机应至少安装一个包");
+                    assert!(!pkgs.is_empty(), "at least one package should be installed");
                     assert!(
                         pkgs.iter().any(|p| p.kind == Kind::Formula),
-                        "应有 formula"
+                        "should contain at least one formula"
                     );
                     eprintln!(
-                        "集成测试通过：加载 {} 个包（formula {}/cask {}）",
+                        "Integration test passed: loaded {} packages ({} formulae/{} casks)",
                         pkgs.len(),
                         pkgs.iter().filter(|p| p.kind == Kind::Formula).count(),
                         pkgs.iter().filter(|p| p.kind == Kind::Cask).count()
@@ -186,16 +186,16 @@ mod tests {
                     return;
                 }
                 Ok(Msg::Error(e)) => {
-                    if e.contains("无法启动 brew") {
-                        eprintln!("跳过集成测试：brew 不可用 - {e}");
+                    if e.contains("Failed to run brew") {
+                        eprintln!("Skipping integration test: brew unavailable - {e}");
                         return;
                     }
-                    panic!("加载失败：{e}");
+                    panic!("Load failed: {e}");
                 }
                 Ok(_) => {}
-                Err(_) => panic!("等待消息超时"),
+                Err(_) => panic!("timed out waiting for message"),
             }
         }
-        panic!("90 秒内未收到包列表");
+        panic!("no package list received within 90 seconds");
     }
 }

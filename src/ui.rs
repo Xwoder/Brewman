@@ -8,7 +8,7 @@ use crate::app::App;
 use crate::model::{Kind, Package};
 
 const HELP: &str =
-    "↑/↓ 或 j/k 选择 | Tab 切换类别(1全部 2公式 3应用) | u 升级 | a 全部升级 | x 卸载 | r 更新软件源 | l 刷新列表 | q 退出";
+    "↑/↓ or j/k Navigate | Tab Switch view (1 All 2 Formulae 3 Casks) | u Upgrade | a Upgrade all | x Uninstall | r Update sources | l Reload | q Quit";
 
 pub fn draw(frame: &mut Frame, app: &App) {
     let area = frame.area();
@@ -33,7 +33,7 @@ fn draw_top(frame: &mut Frame, app: &App, area: Rect) {
     // 第一行：标题 + 统计
     let line1 = Layout::horizontal([Constraint::Percentage(65), Constraint::Percentage(35)]).split(rows[0]);
     let title = Paragraph::new(Line::from(Span::styled(
-        "Brewman — Homebrew 包管理器（Formula + Cask）",
+        "Brewman — Homebrew Package Manager (Formula + Cask)",
         Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
     )));
     frame.render_widget(title, line1[0]);
@@ -43,7 +43,7 @@ fn draw_top(frame: &mut Frame, app: &App, area: Rect) {
         .map(|p| p.name.clone())
         .unwrap_or_else(|| "—".into());
     let stats = Paragraph::new(Line::from(Span::styled(
-        format!("已装 {}  可升级 {}  当前：{}", app.packages.len(), app.outdated_count, current),
+        format!("Installed {}   Outdated {}   Current: {}", app.packages.len(), app.outdated_count, current),
         Style::default().fg(Color::DarkGray),
     )))
     .alignment(Alignment::Right);
@@ -51,7 +51,7 @@ fn draw_top(frame: &mut Frame, app: &App, area: Rect) {
 
     // 第二行：类别 Tabs + 忙碌指示
     let line2 = Layout::horizontal([Constraint::Percentage(70), Constraint::Percentage(30)]).split(rows[1]);
-    let tabs = Tabs::new(["全部", "Formulae", "Casks"])
+    let tabs = Tabs::new(["All", "Formulae", "Casks"])
         .select(app.tab.index())
         .style(Style::default().fg(Color::DarkGray))
         .highlight_style(
@@ -64,7 +64,7 @@ fn draw_top(frame: &mut Frame, app: &App, area: Rect) {
 
     if let Some(busy) = &app.busy {
         let p = Paragraph::new(Line::from(Span::styled(
-            format!("[执行中] {busy}"),
+            format!("[Busy] {busy}"),
             Style::default().fg(Color::Yellow),
         )))
         .alignment(Alignment::Right);
@@ -72,7 +72,7 @@ fn draw_top(frame: &mut Frame, app: &App, area: Rect) {
     }
 
     // 第三行：状态信息
-    let status_style = if app.status.contains("失败") || app.status.contains("错误") {
+    let status_style = if app.status.contains("failed") || app.status.contains("Error") {
         Style::default().fg(Color::Red)
     } else {
         Style::default().fg(Color::Green)
@@ -97,7 +97,7 @@ fn draw_package_list(frame: &mut Frame, app: &App, area: Rect) {
         .collect();
 
     let title = format!(
-        " 包列表  {} / {}  ",
+        " Packages  {} / {}  ",
         app.filtered.len(),
         app.packages.len()
     );
@@ -153,22 +153,22 @@ fn pkg_line(pkg: &Package) -> Line<'static> {
 
     if pkg.outdated {
         spans.push(Span::styled(
-            " [过时]",
+            " [outdated]",
             Style::default().fg(Color::Yellow),
         ));
     }
     if pkg.pinned {
-        spans.push(Span::styled(" [固定]", Style::default().fg(Color::Cyan)));
+        spans.push(Span::styled(" [pinned]", Style::default().fg(Color::Cyan)));
     }
     if pkg.installed_as_dependency {
         spans.push(Span::styled(
-            " [依赖]",
+            " [dep]",
             Style::default().fg(Color::DarkGray),
         ));
     }
     if pkg.auto_updates {
         spans.push(Span::styled(
-            " [自动更新]",
+            " [auto-update]",
             Style::default().fg(Color::Magenta),
         ));
     }
@@ -179,21 +179,21 @@ fn draw_detail(frame: &mut Frame, app: &App, area: Rect) {
     let mut text = String::new();
 
     if let Some(err) = &app.last_error {
-        text.push_str(&format!("[错误] {err}\n\n"));
+        text.push_str(&format!("[Error] {err}\n\n"));
     }
     if let Some(out) = &app.last_output {
-        text.push_str(&format!("[上次输出]\n{out}\n\n"));
+        text.push_str(&format!("[Last output]\n{out}\n\n"));
     }
 
     match app.current() {
         Some(pkg) => text.push_str(&build_detail(pkg)),
-        None => text.push_str("（无选中项）\n\n按 Tab 切换类别，↑/↓ 选择包。"),
+        None => text.push_str("(no selection)\n\nPress Tab to switch views, ↑/↓ to select."),
     }
 
     let block = Block::bordered().title(if app.last_error.is_some() {
-        " 详情（含错误） "
+        " Details (with errors) "
     } else {
-        " 详情 "
+        " Details "
     });
     let para = Paragraph::new(text)
         .block(block)
@@ -208,73 +208,84 @@ fn build_detail(pkg: &Package) -> String {
     let status = {
         let mut v = Vec::new();
         if pkg.outdated {
-            v.push("过时");
+            v.push("outdated");
         }
         if pkg.pinned {
-            v.push("已固定");
+            v.push("pinned");
         }
         if pkg.installed_as_dependency {
-            v.push("作为依赖安装");
+            v.push("installed as dependency");
         }
         if pkg.installed_on_request {
-            v.push("显式安装");
+            v.push("installed on request");
         }
         if pkg.auto_updates {
-            v.push("自动更新");
+            v.push("auto-updates");
         }
         if v.is_empty() {
-            "正常".into()
+            "normal".into()
         } else {
-            v.join("，")
+            v.join(", ")
         }
     };
 
-    s.push_str(&format!("名称     ：{}\n", pkg.name));
-    s.push_str(&format!("类型     ：{}\n", pkg.kind.label()));
+    s.push_str(&format!("{:<16}: {}\n", "Name", pkg.name));
+    s.push_str(&format!("{:<16}: {}\n", "Type", pkg.kind.label()));
     if pkg.kind == Kind::Cask {
-        s.push_str(&format!("应用名   ：{}\n", pkg.display_name));
+        s.push_str(&format!("{:<16}: {}\n", "App name", pkg.display_name));
     }
     s.push_str(&format!(
-        "当前版本 ：{}\n",
-        pkg.current_version.as_deref().unwrap_or("未安装/未知")
+        "{:<16}: {}\n",
+        "Current",
+        pkg.current_version.as_deref().unwrap_or("not installed/unknown")
     ));
     s.push_str(&format!(
-        "最新版本 ：{}\n",
-        pkg.latest_version.as_deref().unwrap_or("未知")
+        "{:<16}: {}\n",
+        "Latest",
+        pkg.latest_version.as_deref().unwrap_or("unknown")
     ));
 
     // 候选版本：HEAD / 其他已安装版本
     let mut candidates: Vec<String> = Vec::new();
     if let Some(h) = &pkg.head_version {
-        candidates.push(format!("HEAD：{h}"));
+        candidates.push(format!("HEAD: {h}"));
     }
     if pkg.installed_versions.len() > 1 {
         for v in &pkg.installed_versions[1..] {
-            candidates.push(format!("已安装：{v}"));
+            candidates.push(format!("installed: {v}"));
         }
     }
     s.push_str(&format!(
-        "候选版本 ：{}\n",
+        "{:<16}: {}\n",
+        "Candidates",
         if candidates.is_empty() {
-            "（无其他候选）".into()
+            "(no other candidates)".into()
         } else {
-            candidates.join("，")
+            candidates.join(", ")
         }
     ));
 
     s.push('\n');
-    s.push_str(&format!("状态     ：{status}\n"));
+    s.push_str(&format!("{:<16}: {status}\n", "Status"));
     if !pkg.dependencies.is_empty() {
-        s.push_str(&format!("依赖     ：{}\n", pkg.dependencies.join(", ")));
+        s.push_str(&format!(
+            "{:<16}: {}\n",
+            "Dependencies",
+            pkg.dependencies.join(", ")
+        ));
     }
     if let Some(d) = &pkg.desc {
-        s.push_str(&format!("描述     ：{d}\n"));
+        s.push_str(&format!("{:<16}: {d}\n", "Description"));
     }
     if let Some(h) = &pkg.homepage {
-        s.push_str(&format!("主页     ：{h}\n"));
+        s.push_str(&format!("{:<16}: {h}\n", "Homepage"));
     }
     if let Some(c) = &pkg.caveats {
-        s.push_str(&format!("注意     ：{}\n", c.replace('\n', " ")));
+        s.push_str(&format!(
+            "{:<16}: {}\n",
+            "Notes",
+            c.replace('\n', " ")
+        ));
     }
     s
 }
@@ -285,19 +296,19 @@ fn draw_bottom(frame: &mut Frame, app: &App, area: Rect) {
     let line: Line = if let Some(c) = &app.confirm {
         Line::from(vec![
             Span::styled(
-                format!("确认：{}？", c.desc),
+                format!("Confirm: {}?", c.desc),
                 Style::default()
                     .fg(Color::Yellow)
                     .add_modifier(Modifier::BOLD),
             ),
             Span::styled(
-                "    [Y] 确认   [N/Esc] 取消",
+                "    [Y] Confirm   [N/Esc] Cancel",
                 Style::default().fg(Color::DarkGray),
             ),
         ])
     } else if app.busy.is_some() {
         Line::from(Span::styled(
-            "正在执行 brew 命令，操作完成后列表将自动刷新…",
+            "Running brew command; list will refresh automatically when done...",
             Style::default().fg(Color::Yellow),
         ))
     } else {

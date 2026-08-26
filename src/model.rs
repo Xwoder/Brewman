@@ -119,7 +119,7 @@ fn non_empty(s: Option<String>) -> Option<String> {
 /// 解析 `brew info --json=v2 --installed` 输出，返回排序后的包列表
 pub fn parse_installed_info(json: &str) -> Result<Vec<Package>, String> {
     let info: InfoV2 =
-        serde_json::from_str(json).map_err(|e| format!("解析 brew info JSON 失败：{e}"))?;
+        serde_json::from_str(json).map_err(|e| format!("Failed to parse brew info JSON: {e}"))?;
 
     let mut packages = Vec::new();
 
@@ -215,7 +215,7 @@ struct OutdatedCask {
 /// 解析 `brew outdated --json=v2`，返回 (包名, 最新版本) 列表
 pub fn parse_outdated(json: &str) -> Result<Vec<(String, String)>, String> {
     let out: OutdatedV2 =
-        serde_json::from_str(json).map_err(|e| format!("解析 brew outdated JSON 失败：{e}"))?;
+        serde_json::from_str(json).map_err(|e| format!("Failed to parse brew outdated JSON: {e}"))?;
     let mut entries = Vec::new();
     for f in out.formulae {
         entries.push((f.name, f.current_version));

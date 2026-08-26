@@ -17,7 +17,7 @@ use crate::brew::{Job, Msg};
 fn main() -> io::Result<()> {
     // TUI 需要交互式终端，检测到非 TTY 时优雅退出而非 panic
     if !std::io::stdout().is_terminal() || !std::io::stdin().is_terminal() {
-        eprintln!("Brewman 需要交互式终端（TTY）才能运行。请在终端中直接执行 `Brewman`。");
+        eprintln!("Brewman requires an interactive terminal (TTY). Please run `Brewman` directly in a terminal.");
         std::process::exit(1);
     }
 

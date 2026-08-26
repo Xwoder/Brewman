@@ -82,7 +82,7 @@ impl App {
             selected: 0,
             detail_scroll: 0,
             busy: None,
-            status: "启动中…".into(),
+            status: "Starting...".into(),
             confirm: None,
             outdated_count: 0,
             should_quit: false,
@@ -120,7 +120,7 @@ impl App {
 
     fn start_job(&mut self, desc: String, job: Job) {
         self.busy = Some(desc);
-        self.status = "执行中…".into();
+        self.status = "Working...".into();
         let _ = self.job_tx.send(job);
     }
 
@@ -140,7 +140,7 @@ impl App {
                 if let Some(&idx) = self.filtered.get(i) {
                     let pkg = self.packages[idx].clone();
                     self.start_job(
-                        format!("升级 {}…", pkg.name),
+                        format!("Upgrading {}...", pkg.name),
                         Job::Upgrade {
                             name: pkg.name,
                             kind: pkg.kind,
@@ -152,7 +152,7 @@ impl App {
                 if let Some(&idx) = self.filtered.get(i) {
                     let pkg = self.packages[idx].clone();
                     self.start_job(
-                        format!("卸载 {}…", pkg.name),
+                        format!("Uninstalling {}...", pkg.name),
                         Job::Uninstall {
                             name: pkg.name,
                             kind: pkg.kind,
@@ -161,7 +161,7 @@ impl App {
                 }
             }
             PendingAction::UpgradeAll => {
-                self.start_job("升级所有过时包…".into(), Job::UpgradeAll);
+                self.start_job("Upgrading all outdated packages...".into(), Job::UpgradeAll);
             }
         }
     }
@@ -212,13 +212,13 @@ impl App {
                 if let Some(pkg) = self.current() {
                     let desc = if pkg.outdated {
                         format!(
-                            "升级 {}：{} → {}",
+                            "Upgrade {}: {} → {}",
                             pkg.name,
                             pkg.current_version.as_deref().unwrap_or("?"),
                             pkg.latest_version.as_deref().unwrap_or("?")
                         )
                     } else {
-                        format!("升级 {}（已是最新）", pkg.name)
+                        format!("Upgrade {} (already up to date)", pkg.name)
                     };
                     let i = self.selected;
                     self.confirm_action(desc, PendingAction::Upgrade(i));
@@ -226,7 +226,7 @@ impl App {
             }
             KeyCode::Char('x') | KeyCode::Char('X') | KeyCode::Char('d') | KeyCode::Char('D') => {
                 if let Some(pkg) = self.current() {
-                    let desc = format!("卸载 {}（{} {}）", pkg.name, pkg.current_version.as_deref().unwrap_or("?"), pkg.kind.label());
+                    let desc = format!("Uninstall {} ({} {})", pkg.name, pkg.current_version.as_deref().unwrap_or("?"), pkg.kind.label());
                     let i = self.selected;
                     self.confirm_action(desc, PendingAction::Uninstall(i));
                 }
@@ -234,19 +234,19 @@ impl App {
             KeyCode::Char('a') | KeyCode::Char('A') => {
                 if self.outdated_count > 0 {
                     self.confirm_action(
-                        format!("升级全部 {} 个过时包", self.outdated_count),
+                        format!("Upgrade all {} outdated packages", self.outdated_count),
                         PendingAction::UpgradeAll,
                     );
                 }
             }
             KeyCode::Char('r') | KeyCode::Char('R') if self.busy.is_none() => {
-                self.busy = Some("更新软件源（brew update）…".into());
-                self.status = "正在同步 Homebrew 软件源，请稍候…".into();
+                self.busy = Some("Updating software sources (brew update)...".into());
+                self.status = "Syncing Homebrew software sources...".into();
                 let _ = self.job_tx.send(Job::Update);
             }
             KeyCode::Char('l') | KeyCode::Char('L') if self.busy.is_none() => {
                 self.request_load();
-                self.status = "重新加载列表…".into();
+                self.status = "Reloading package list...".into();
             }
             _ => {}
         }
@@ -275,7 +275,7 @@ impl App {
             match msg {
                 Msg::Loading => {
                     if self.busy.is_none() {
-                        self.busy = Some("正在执行 brew 命令…".into());
+                        self.busy = Some("Running brew command...".into());
                     }
                 }
                 Msg::Packages(pkgs) => {
@@ -283,7 +283,7 @@ impl App {
                     self.busy = None;
                     self.apply_filter();
                     self.status = format!(
-                        "已加载 {} 个包（formula {}/cask {}），{} 个可升级",
+                        "Loaded {} packages ({} formulae/{} casks), {} outdated",
                         self.packages.len(),
                         self.packages
                             .iter()
@@ -304,16 +304,16 @@ impl App {
                             p.latest_version = Some(latest);
                         }
                     }
-                    self.status = format!("{} 个包可升级", self.outdated_count);
+                    self.status = format!("{} package(s) outdated", self.outdated_count);
                 }
                 Msg::Done { label, ok, output } => {
                     self.busy = None;
                     if ok {
                         self.last_output = Some(summarize(&output, 300));
-                        self.status = format!("{label} 执行成功");
+                        self.status = format!("{label} completed successfully");
                     } else {
                         self.last_error = Some(summarize(&output, 500));
-                        self.status = format!("{label} 执行失败（详情见右侧面板）");
+                        self.status = format!("{label} failed (see right panel for details)");
                     }
                 }
                 Msg::Reload => {
@@ -322,7 +322,7 @@ impl App {
                 Msg::Error(e) => {
                     self.busy = None;
                     self.last_error = Some(e.clone());
-                    self.status = format!("错误：{e}");
+                    self.status = format!("Error: {e}");
                 }
             }
         }
@@ -334,6 +334,6 @@ fn summarize(s: &str, max: usize) -> String {
     if t.len() <= max {
         t.to_string()
     } else {
-        format!("{}…（共 {} 字符）", &t[..max], t.len())
+        format!("{}... ({} chars total)", &t[..max], t.len())
     }
 }
