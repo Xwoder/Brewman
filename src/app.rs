@@ -95,6 +95,8 @@ pub struct App {
     pub last_output: Option<String>,
     /// 活动日志（最新在尾部，UI 反转显示）
     pub activities: VecDeque<Activity>,
+    /// 当前命令的实时输出行（最新在尾部，UI 显示最近几行）
+    pub progress: VecDeque<String>,
 }
 
 impl App {
@@ -116,6 +118,7 @@ impl App {
             last_error: None,
             last_output: None,
             activities: VecDeque::new(),
+            progress: VecDeque::new(),
         }
     }
 
@@ -126,6 +129,19 @@ impl App {
             self.activities.pop_front();
         }
         self.activities.push_back(Activity { kind, text });
+    }
+
+    /// 追加一行实时命令输出（保留最近 MAX_PROGRESS 条）
+    fn push_progress(&mut self, line: String) {
+        const MAX_PROGRESS: usize = 50;
+        let cleaned = clean_progress_line(&line);
+        if cleaned.is_empty() {
+            return;
+        }
+        if self.progress.len() >= MAX_PROGRESS {
+            self.progress.pop_front();
+        }
+        self.progress.push_back(cleaned);
     }
 
     pub fn request_load(&self) {
@@ -365,9 +381,13 @@ impl App {
                         self.busy = Some("Running brew command...".into());
                     }
                 }
+                Msg::Progress(line) => {
+                    self.push_progress(line);
+                }
                 Msg::Packages(pkgs) => {
                     self.packages = pkgs;
                     self.busy = None;
+                    self.progress.clear();
                     self.apply_filter();
                     self.status = format!(
                         "Loaded {} packages ({} formulae/{} casks), {} outdated",
@@ -395,6 +415,7 @@ impl App {
                 }
                 Msg::Done { label, ok, output } => {
                     self.busy = None;
+                    self.progress.clear();
                     if ok {
                         self.last_output = Some(summarize(&output, 300));
                         self.status = format!("{label} completed successfully");
@@ -410,6 +431,7 @@ impl App {
                 }
                 Msg::Error(e) => {
                     self.busy = None;
+                    self.progress.clear();
                     self.last_error = Some(e.clone());
                     self.status = format!("Error: {e}");
                     self.push_activity(ActivityKind::Error, format!("Error: {e}"));
@@ -426,4 +448,30 @@ fn summarize(s: &str, max: usize) -> String {
     } else {
         format!("{}... ({} chars total)", &t[..max], t.len())
     }
+}
+
+/// 清理一行实时输出：剥离 ANSI 转义序列、去掉行尾 \r（进度条覆盖用）
+fn clean_progress_line(line: &str) -> String {
+    let mut out = String::with_capacity(line.len());
+    let mut chars = line.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\x1b' {
+            // 跳过 CSI 序列（如 \x1b[2K、\x1b[0m 等）
+            if chars.peek() == Some(&'[') {
+                chars.next();
+                for c2 in chars.by_ref() {
+                    if ('@'..='~').contains(&c2) {
+                        break;
+                    }
+                }
+            } else {
+                chars.next();
+            }
+        } else if c == '\r' {
+            // 忽略回车
+        } else {
+            out.push(c);
+        }
+    }
+    out.trim().to_string()
 }

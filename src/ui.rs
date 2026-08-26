@@ -329,8 +329,22 @@ fn draw_activity(frame: &mut Frame, app: &App, area: Rect) {
         )));
     }
 
-    // 历史记录（最新在上，最多填满面板高度）
-    let room = area.height.saturating_sub(2) as usize;
+    // 实时进度输出（灰色缩进，最多显示 3 行）
+    if !app.progress.is_empty() {
+        let start = app.progress.len().saturating_sub(3);
+        for line in app.progress.iter().skip(start) {
+            lines.push(Line::from(Span::styled(
+                format!("  {line}"),
+                Style::default().fg(Color::DarkGray),
+            )));
+        }
+    }
+
+    // 历史记录（最新在上，用剩余空间）
+    let used = lines.len();
+    let room = (area.height as usize)
+        .saturating_sub(2)
+        .saturating_sub(used);
     for a in app.activities.iter().rev().take(room) {
         let style = match a.kind {
             ActivityKind::Done => Style::default().fg(Color::Green),
