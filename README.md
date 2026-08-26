@@ -11,7 +11,7 @@ Brewman is a terminal user interface (TUI) built with **Rust + Ratatui** for man
 - **Outdated-only view**: Filter the list to show only outdated packages (including auto-updates casks and `:latest`/HEAD installs, via `brew outdated --greedy`)
 - **One-key upgrades**: Upgrade a single package, a multi-selected group, or all outdated packages at once (with confirmation prompts)
 - **Batch selection**: Mark multiple packages with `Space` and upgrade them together with a single `u` (formulae and casks are grouped into separate `brew upgrade` calls)
-- **Live activity panel**: Bottom panel shows the command currently running plus a colored history of recent results (done / failed)
+- **Live activity panel**: Bottom panel shows the command currently running, streams its real-time output (e.g. `==> Downloading`, `==> Pouring`), plus a colored history of recent results (done / failed)
 - **Safe uninstall**: Uninstalls require explicit confirmation (Y/N)
 - **Source update**: Built-in `brew update` to sync Homebrew sources and auto-refresh the list
 - **Non-blocking design**: brew commands run sequentially on a background worker thread; the UI stays responsive with live status feedback
@@ -31,6 +31,8 @@ Brewman is a terminal user interface (TUI) built with **Rust + Ratatui** for man
 │                                        │ Status   : outdated, installed on request │
 ├──────────────────┴──────────────────────────────────────────┤
 │ ▶ Upgrading ollama...                                       │
+│   ==> Downloading https://ghcr.io/v2/homebrew/...           │
+│   ==> Pouring ollama--0.33.0.arm64_sonoma.bottle.tar.gz     │
 │ Upgrade ollama: 0.32.15 → 0.33.0 completed                  │
 │ brew update completed                                       │
 └─────────────────────────────────────────────────────────────┘
