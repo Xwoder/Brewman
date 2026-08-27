@@ -48,10 +48,10 @@ cd Brewman
 cargo install --path . --root /opt/homebrew
 ```
 
-The `Brewman` command will be added to your PATH (`/opt/homebrew/bin`) and can be run from any terminal:
+The `brewman` command will be added to your PATH (`/opt/homebrew/bin`) and can be run from any terminal:
 
 ```bash
-Brewman
+brewman
 ```
 
 > Note: `--root /opt/homebrew` targets the brew prefix directory. If `cargo` is not in your PATH, run `export PATH="/opt/homebrew/opt/rustup/bin:$PATH"` first.
