@@ -42,6 +42,56 @@ impl Tab {
     }
 }
 
+/// 升级命令所使用的镜像源（通过 HOMEBREW_*_GIT_REMOTE 环境变量注入）
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Mirror {
+    /// 不注入任何镜像环境变量，使用系统默认配置
+    #[default]
+    Default,
+    /// 清华 TUNA 镜像
+    Tuna,
+    /// 北外 BFSU 镜像
+    Bfsu,
+}
+
+impl Mirror {
+    /// 弹窗中展示的全部选项（顺序即数字键与上下键的索引顺序）
+    pub const ALL: [Mirror; 3] = [Mirror::Default, Mirror::Tuna, Mirror::Bfsu];
+
+    pub fn label(&self) -> &'static str {
+        match self {
+            Mirror::Default => "Default (system config)",
+            Mirror::Tuna => "TUNA · Tsinghua",
+            Mirror::Bfsu => "BFSU · Beijing Foreign Studies",
+        }
+    }
+
+    /// (brew 仓库 URL, homebrew-core 仓库 URL)
+    pub fn urls(&self) -> Option<(&'static str, &'static str)> {
+        match self {
+            Mirror::Default => None,
+            Mirror::Tuna => Some((
+                "https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/brew.git",
+                "https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/homebrew-core.git",
+            )),
+            Mirror::Bfsu => Some((
+                "https://mirrors.bfsu.edu.cn/git/homebrew/brew.git",
+                "https://mirrors.bfsu.edu.cn/git/homebrew/homebrew-core.git",
+            )),
+        }
+    }
+
+    /// 注入环境变量的命令前缀（None 表示不注入）
+    fn env_prefix(&self) -> Option<String> {
+        self.urls().map(|(brew, core)| {
+            format!(
+                "HOMEBREW_BREW_GIT_REMOTE=\"{brew}\" \
+                 HOMEBREW_CORE_GIT_REMOTE=\"{core}\""
+            )
+        })
+    }
+}
+
 /// 待确认的操作
 pub enum PendingAction {
     Upgrade(usize),
@@ -111,6 +161,12 @@ pub struct App {
     pub progress: VecDeque<String>,
     /// 确认升级后待执行的 brew upgrade 命令（程序退出后由用户在系统终端执行）
     pub exit_command: Option<String>,
+    /// 当前选中的升级镜像源
+    pub mirror: Mirror,
+    /// 是否显示镜像选择弹窗
+    pub mirror_picker: bool,
+    /// 镜像弹窗中当前高亮的选项索引（Mirror::ALL 下标）
+    pub mirror_index: usize,
 }
 
 impl App {
@@ -134,6 +190,9 @@ impl App {
             activities: VecDeque::new(),
             progress: VecDeque::new(),
             exit_command: None,
+            mirror: Mirror::Default,
+            mirror_picker: false,
+            mirror_index: 0,
         }
     }
 
@@ -210,10 +269,11 @@ impl App {
             PendingAction::Upgrade(i) => {
                 if let Some(&idx) = self.filtered.get(i) {
                     let pkg = self.packages[idx].clone();
-                    self.exit_command = Some(match pkg.kind {
+                    let cmd = match pkg.kind {
                         Kind::Formula => format!("brew upgrade {}", pkg.name),
                         Kind::Cask => format!("brew upgrade --cask {}", pkg.name),
-                    });
+                    };
+                    self.exit_command = Some(self.make_exit_command(&cmd));
                 }
             }
             PendingAction::Uninstall(i) => {
@@ -229,16 +289,36 @@ impl App {
                 }
             }
             PendingAction::UpgradeAll => {
-                self.exit_command = Some("brew upgrade --greedy".into());
+                self.exit_command = Some(self.make_exit_command("brew upgrade --greedy"));
             }
             PendingAction::UpgradeSelected(pkgs) => {
-                self.exit_command = Some(build_upgrade_command(&pkgs));
+                let cmd = build_upgrade_command(&pkgs);
+                self.exit_command = Some(self.make_exit_command(&cmd));
             }
         }
         // 升级操作不在程序内执行：退出程序，命令交由用户在系统终端运行
         if self.exit_command.is_some() {
             self.should_quit = true;
         }
+    }
+
+    /// 将当前镜像源的环境变量注入到每条 brew 命令前（多行命令逐行注入）
+    fn make_exit_command(&self, cmd: &str) -> String {
+        match self.mirror.env_prefix() {
+            None => cmd.to_string(),
+            Some(prefix) => cmd
+                .lines()
+                .map(|line| format!("{prefix} {line}"))
+                .collect::<Vec<_>>()
+                .join("\n"),
+        }
+    }
+
+    /// 设置升级镜像源并关闭弹窗
+    fn set_mirror(&mut self, mirror: Mirror) {
+        self.mirror = mirror;
+        self.mirror_picker = false;
+        self.status = format!("Upgrade mirror set to: {}", mirror.label());
     }
 
     /// 处理按键，返回 true 表示请求退出
@@ -259,6 +339,31 @@ impl App {
                 }
                 KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => {
                     self.confirm = None;
+                }
+                _ => {}
+            }
+            return false;
+        }
+
+        // 镜像选择弹窗优先处理
+        if self.mirror_picker {
+            match key.code {
+                KeyCode::Char('1') => self.set_mirror(Mirror::Default),
+                KeyCode::Char('2') => self.set_mirror(Mirror::Tuna),
+                KeyCode::Char('3') => self.set_mirror(Mirror::Bfsu),
+                KeyCode::Up | KeyCode::Char('k') => {
+                    self.mirror_index = self.mirror_index.saturating_sub(1);
+                }
+                KeyCode::Down | KeyCode::Char('j') => {
+                    self.mirror_index = (self.mirror_index + 1).min(Mirror::ALL.len() - 1);
+                }
+                KeyCode::Enter | KeyCode::Char(' ') => {
+                    if let Some(&m) = Mirror::ALL.get(self.mirror_index) {
+                        self.set_mirror(m);
+                    }
+                }
+                KeyCode::Esc | KeyCode::Char('m') | KeyCode::Char('M') => {
+                    self.mirror_picker = false;
                 }
                 _ => {}
             }
@@ -359,6 +464,14 @@ impl App {
                 self.busy = Some("Updating software sources (brew update)...".into());
                 self.status = "Syncing Homebrew software sources...".into();
                 let _ = self.job_tx.send(Job::Update);
+            }
+            // m：选择本次升级所使用的镜像源
+            KeyCode::Char('m') | KeyCode::Char('M') => {
+                self.mirror_picker = true;
+                self.mirror_index = Mirror::ALL
+                    .iter()
+                    .position(|m| *m == self.mirror)
+                    .unwrap_or(0);
             }
             KeyCode::Char('l') | KeyCode::Char('L') if self.busy.is_none() => {
                 self.request_load();

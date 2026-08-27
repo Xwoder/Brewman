@@ -2,9 +2,9 @@ use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, List, ListItem, ListState, Paragraph, Tabs, Wrap};
+use ratatui::widgets::{Block, Clear, List, ListItem, ListState, Paragraph, Tabs, Wrap};
 
-use crate::app::{ActivityKind, App};
+use crate::app::{ActivityKind, App, Mirror};
 use crate::model::{Kind, Package};
 
 fn help_line() -> Line<'static> {
@@ -26,6 +26,7 @@ fn help_line() -> Line<'static> {
     add("a", "Upgrade all");
     add("x", "Uninstall");
     add("r", "Update sources");
+    add("m", "Mirror");
     add("l", "Reload");
     add("q", "Quit");
     spans.pop(); // 去掉末尾的 "| "
@@ -46,6 +47,72 @@ pub fn draw(frame: &mut Frame, app: &App) {
     draw_middle(frame, app, chunks[1]);
     draw_activity(frame, app, chunks[2]);
     draw_bottom(frame, app, chunks[3]);
+
+    if app.mirror_picker {
+        draw_mirror_picker(frame, app);
+    }
+}
+
+/// 镜像选择弹窗：切换本次升级所使用的镜像源
+fn draw_mirror_picker(frame: &mut Frame, app: &App) {
+    let area = frame.area();
+    let popup = centered_popup(11, area);
+    frame.render_widget(Clear, popup);
+
+    let key_style = Style::default()
+        .fg(Color::Yellow)
+        .add_modifier(Modifier::BOLD);
+    let dim = Style::default().fg(Color::DarkGray);
+
+    let mut lines: Vec<Line> = Vec::new();
+    lines.push(Line::from(Span::styled(
+        "Select mirror source for this upgrade:",
+        Style::default().add_modifier(Modifier::BOLD),
+    )));
+    lines.push(Line::from(""));
+
+    for (i, mirror) in Mirror::ALL.iter().enumerate() {
+        let highlighted = i == app.mirror_index;
+        let style = if highlighted {
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(Color::White)
+        };
+        lines.push(Line::from(vec![
+            Span::styled(format!("{} ", i + 1), key_style),
+            Span::styled(if highlighted { "▸ " } else { "  " }, style),
+            Span::styled(mirror.label(), style),
+        ]));
+    }
+
+    lines.push(Line::from(""));
+    if let Some(&mirror) = Mirror::ALL.get(app.mirror_index) {
+        if let Some((brew, core)) = mirror.urls() {
+            lines.push(Line::from(Span::styled(format!("brew: {brew}"), dim)));
+            lines.push(Line::from(Span::styled(format!("core: {core}"), dim)));
+        } else {
+            lines.push(Line::from(""));
+            lines.push(Line::from(""));
+        }
+    }
+    lines.push(Line::from(Span::styled(
+        "↑/↓ or j/k select · Enter confirm · Esc cancel",
+        dim,
+    )));
+
+    let block = Block::bordered().title(" Mirror ");
+    frame.render_widget(Paragraph::new(lines).block(block), popup);
+}
+
+/// 固定高度的水平居中弹窗：宽度占满（左右各留 2 列），垂直居中
+fn centered_popup(height: u16, area: Rect) -> Rect {
+    let h = height.min(area.height);
+    let w = area.width.saturating_sub(4);
+    let x = area.x + area.width.saturating_sub(w) / 2;
+    let y = area.y + area.height.saturating_sub(h) / 2;
+    Rect::new(x, y, w, h)
 }
 
 // ---------- 顶部 ----------
