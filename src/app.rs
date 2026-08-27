@@ -51,6 +51,18 @@ pub enum PendingAction {
     UpgradeSelected(Vec<(String, Kind)>),
 }
 
+impl PendingAction {
+    /// 是否为升级类操作（升级命令在退出程序后由用户在终端自行执行）
+    pub fn is_upgrade(&self) -> bool {
+        matches!(
+            self,
+            PendingAction::Upgrade(_)
+                | PendingAction::UpgradeAll
+                | PendingAction::UpgradeSelected(_)
+        )
+    }
+}
+
 pub struct Confirm {
     pub desc: String,
     pub action: PendingAction,
@@ -97,6 +109,8 @@ pub struct App {
     pub activities: VecDeque<Activity>,
     /// 当前命令的实时输出行（最新在尾部，UI 显示最近几行）
     pub progress: VecDeque<String>,
+    /// 确认升级后待执行的 brew upgrade 命令（程序退出后由用户在系统终端执行）
+    pub exit_command: Option<String>,
 }
 
 impl App {
@@ -119,6 +133,7 @@ impl App {
             last_output: None,
             activities: VecDeque::new(),
             progress: VecDeque::new(),
+            exit_command: None,
         }
     }
 
@@ -195,13 +210,10 @@ impl App {
             PendingAction::Upgrade(i) => {
                 if let Some(&idx) = self.filtered.get(i) {
                     let pkg = self.packages[idx].clone();
-                    self.start_job(
-                        format!("Upgrading {}...", pkg.name),
-                        Job::Upgrade {
-                            name: pkg.name,
-                            kind: pkg.kind,
-                        },
-                    );
+                    self.exit_command = Some(match pkg.kind {
+                        Kind::Formula => format!("brew upgrade {}", pkg.name),
+                        Kind::Cask => format!("brew upgrade --cask {}", pkg.name),
+                    });
                 }
             }
             PendingAction::Uninstall(i) => {
@@ -217,14 +229,15 @@ impl App {
                 }
             }
             PendingAction::UpgradeAll => {
-                self.start_job("Upgrading all outdated packages...".into(), Job::UpgradeAll);
+                self.exit_command = Some("brew upgrade --greedy".into());
             }
             PendingAction::UpgradeSelected(pkgs) => {
-                self.start_job(
-                    format!("Upgrading {} selected packages...", pkgs.len()),
-                    Job::UpgradeSelected(pkgs),
-                );
+                self.exit_command = Some(build_upgrade_command(&pkgs));
             }
+        }
+        // 升级操作不在程序内执行：退出程序，命令交由用户在系统终端运行
+        if self.exit_command.is_some() {
+            self.should_quit = true;
         }
     }
 
@@ -474,4 +487,26 @@ fn clean_progress_line(line: &str) -> String {
         }
     }
     out.trim().to_string()
+}
+
+/// 构造 brew upgrade 命令：formula 与 cask 不能混在一条命令里，需分组输出
+fn build_upgrade_command(pkgs: &[(String, Kind)]) -> String {
+    let formulae: Vec<&str> = pkgs
+        .iter()
+        .filter(|(_, k)| *k == Kind::Formula)
+        .map(|(n, _)| n.as_str())
+        .collect();
+    let casks: Vec<&str> = pkgs
+        .iter()
+        .filter(|(_, k)| *k == Kind::Cask)
+        .map(|(n, _)| n.as_str())
+        .collect();
+    let mut lines = Vec::new();
+    if !formulae.is_empty() {
+        lines.push(format!("brew upgrade {}", formulae.join(" ")));
+    }
+    if !casks.is_empty() {
+        lines.push(format!("brew upgrade --cask {}", casks.join(" ")));
+    }
+    lines.join("\n")
 }

@@ -4,11 +4,13 @@ mod model;
 mod ui;
 
 use std::io::{self, IsTerminal};
+use std::process::Command;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
 use crossterm::event::{self, Event, KeyEventKind};
+use crossterm::style::Stylize;
 use ratatui::DefaultTerminal;
 
 use crate::app::App;
@@ -34,6 +36,32 @@ fn main() -> io::Result<()> {
     let result = run_loop(&mut terminal, &mut app);
 
     ratatui::restore();
+
+    // 升级操作不在程序内执行：退出后在前台运行 brew upgrade，
+    // 与用户自己在终端输入命令的效果一致（实时输出、可 Ctrl-C 中断）
+    if let Some(cmd) = &app.exit_command {
+        println!();
+        for line in cmd.lines() {
+            println!("{}", format!("$ {line}").yellow());
+            let status = Command::new("sh").arg("-c").arg(line).status();
+            match status {
+                Ok(s) if s.success() => {
+                    println!("{}", format!("[ok] {line} completed").green());
+                }
+                Ok(s) => {
+                    println!(
+                        "{}",
+                        format!("[fail] {line} exited with code {:?}", s.code()).red()
+                    );
+                }
+                Err(e) => {
+                    println!("{}", format!("[fail] {line} failed to start: {e}").red());
+                }
+            }
+            println!();
+        }
+    }
+
     result
 }
 

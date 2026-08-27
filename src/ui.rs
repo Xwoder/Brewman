@@ -361,6 +361,12 @@ fn draw_activity(frame: &mut Frame, app: &App, area: Rect) {
 
 fn draw_bottom(frame: &mut Frame, app: &App, area: Rect) {
     let line: Line = if let Some(c) = &app.confirm {
+        let hint = if c.action.is_upgrade() {
+            // 升级：确认后退出程序，命令在前台执行（等同用户自己输入）
+            "    [Y] Confirm (exit & run)   [N/Esc] Cancel"
+        } else {
+            "    [Y] Confirm   [N/Esc] Cancel"
+        };
         Line::from(vec![
             Span::styled(
                 format!("Confirm: {}?", c.desc),
@@ -368,10 +374,7 @@ fn draw_bottom(frame: &mut Frame, app: &App, area: Rect) {
                     .fg(Color::Yellow)
                     .add_modifier(Modifier::BOLD),
             ),
-            Span::styled(
-                "    [Y] Confirm   [N/Esc] Cancel",
-                Style::default().fg(Color::DarkGray),
-            ),
+            Span::styled(hint, Style::default().fg(Color::DarkGray)),
         ])
     } else if app.busy.is_some() {
         Line::from(Span::styled(

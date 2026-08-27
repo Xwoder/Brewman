@@ -10,12 +10,6 @@ pub enum Job {
     Load,
     /// 更新 Homebrew 软件源（brew update），完成后重新加载
     Update,
-    /// 升级单个包
-    Upgrade { name: String, kind: Kind },
-    /// 升级所有过时包
-    UpgradeAll,
-    /// 升级选中的多个包：(包名, 类型)
-    UpgradeSelected(Vec<(String, Kind)>),
     /// 卸载单个包
     Uninstall { name: String, kind: Kind },
 }
@@ -71,73 +65,6 @@ pub fn worker(job_rx: Receiver<Job>, msg_tx: Sender<Msg>) {
                 let _ = msg_tx.send(Msg::Done { label, ok, output });
                 let _ = msg_tx.send(Msg::Reload);
             }
-            Job::Upgrade { name, kind } => {
-                let _ = msg_tx.send(Msg::Loading);
-                let args = match kind {
-                    Kind::Formula => vec!["upgrade".to_string(), name.clone()],
-                    Kind::Cask => vec!["upgrade".to_string(), "--cask".to_string(), name.clone()],
-                };
-                let label = format!("Upgrade {} (brew {})", name, args.join(" "));
-                let (ok, output) = to_pair(exec_streamed(&args, &msg_tx));
-                let _ = msg_tx.send(Msg::Done { label, ok, output });
-                let _ = msg_tx.send(Msg::Reload);
-            }
-            Job::UpgradeAll => {
-                let _ = msg_tx.send(Msg::Loading);
-                let label = "Upgrade all outdated packages (brew upgrade --greedy)".to_string();
-                let args = vec!["upgrade".to_string(), "--greedy".to_string()];
-                let (ok, output) = to_pair(exec_streamed(&args, &msg_tx));
-                let _ = msg_tx.send(Msg::Done { label, ok, output });
-                let _ = msg_tx.send(Msg::Reload);
-            }
-            Job::UpgradeSelected(pkgs) => {
-                let _ = msg_tx.send(Msg::Loading);
-
-                // formula 与 cask 不能混在同一条 brew upgrade 命令里，分组执行
-                let formulae: Vec<String> = pkgs
-                    .iter()
-                    .filter(|(_, k)| *k == Kind::Formula)
-                    .map(|(n, _)| n.clone())
-                    .collect();
-                let casks: Vec<String> = pkgs
-                    .iter()
-                    .filter(|(_, k)| *k == Kind::Cask)
-                    .map(|(n, _)| n.clone())
-                    .collect();
-
-                let mut ok = true;
-                let mut output = String::new();
-                let mut labels = Vec::new();
-
-                if !formulae.is_empty() {
-                    let mut args = vec!["upgrade".to_string()];
-                    args.extend(formulae);
-                    labels.push(format!("brew {}", args.join(" ")));
-                    let (o, out) = to_pair(exec_streamed(&args, &msg_tx));
-                    ok &= o;
-                    push_output(&mut output, &out);
-                }
-                if !casks.is_empty() {
-                    let mut args = vec!["upgrade".to_string(), "--cask".to_string()];
-                    args.extend(casks);
-                    labels.push(format!("brew {}", args.join(" ")));
-                    let (o, out) = to_pair(exec_streamed(&args, &msg_tx));
-                    ok &= o;
-                    push_output(&mut output, &out);
-                }
-
-                let label = if labels.is_empty() {
-                    "Upgrade selected packages".to_string()
-                } else {
-                    format!(
-                        "Upgrade {} selected packages ({})",
-                        pkgs.len(),
-                        labels.join("; ")
-                    )
-                };
-                let _ = msg_tx.send(Msg::Done { label, ok, output });
-                let _ = msg_tx.send(Msg::Reload);
-            }
             Job::Uninstall { name, kind } => {
                 let _ = msg_tx.send(Msg::Loading);
                 let args = match kind {
@@ -169,14 +96,6 @@ fn to_pair(result: Result<String, String>) -> (bool, String) {
         Ok(o) => (true, o),
         Err(e) => (false, e),
     }
-}
-
-/// 拼接多次命令的输出，用换行分隔
-fn push_output(buf: &mut String, part: &str) {
-    if !buf.is_empty() {
-        buf.push('\n');
-    }
-    buf.push_str(part);
 }
 
 /// 执行 brew 命令，成功返回 Ok(stdout)，失败返回 Err(错误信息)
