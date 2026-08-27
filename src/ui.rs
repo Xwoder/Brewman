@@ -144,7 +144,7 @@ fn pkg_line(pkg: &Package, selected: bool) -> Line<'static> {
 
     // 选中标记（未选中用空格占位保持对齐）
     spans.push(Span::styled(
-        if selected { "✓ " } else { "  " },
+        if selected { "[✓] " } else { "[ ] " },
         Style::default()
             .fg(Color::Green)
             .add_modifier(Modifier::BOLD),
