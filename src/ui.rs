@@ -7,7 +7,30 @@ use ratatui::widgets::{Block, List, ListItem, ListState, Paragraph, Tabs, Wrap};
 use crate::app::{ActivityKind, App};
 use crate::model::{Kind, Package};
 
-const HELP: &str = "↑/↓ or j/k Navigate | Space Select | Tab Switch view | u Upgrade | a Upgrade all | x Uninstall | r Update sources | l Reload | q Quit";
+fn help_line() -> Line<'static> {
+    let key_style = Style::default()
+        .fg(Color::Yellow)
+        .add_modifier(Modifier::BOLD);
+    let dim = Style::default().fg(Color::DarkGray);
+
+    let mut spans: Vec<Span<'static>> = Vec::new();
+    let mut add = |key: &str, desc: &str| {
+        spans.push(Span::styled(format!("{key} "), key_style));
+        spans.push(Span::styled(format!("{desc}  "), dim));
+        spans.push(Span::styled("| ", dim));
+    };
+    add("↑/↓/j/k", "Navigate");
+    add("Space", "Select");
+    add("Tab", "Switch view");
+    add("u", "Upgrade");
+    add("a", "Upgrade all");
+    add("x", "Uninstall");
+    add("r", "Update sources");
+    add("l", "Reload");
+    add("q", "Quit");
+    spans.pop(); // 去掉末尾的 "| "
+    Line::from(spans)
+}
 
 pub fn draw(frame: &mut Frame, app: &App) {
     let area = frame.area();
@@ -99,7 +122,7 @@ fn draw_top(frame: &mut Frame, app: &App, area: Rect) {
 
 fn draw_middle(frame: &mut Frame, app: &App, area: Rect) {
     let cols =
-        Layout::horizontal([Constraint::Percentage(42), Constraint::Percentage(58)]).split(area);
+        Layout::horizontal([Constraint::Percentage(60), Constraint::Percentage(40)]).split(area);
     draw_package_list(frame, app, cols[0]);
     draw_detail(frame, app, cols[1]);
 }
@@ -382,7 +405,7 @@ fn draw_bottom(frame: &mut Frame, app: &App, area: Rect) {
             Style::default().fg(Color::Yellow),
         ))
     } else {
-        Line::from(Span::styled(HELP, Style::default().fg(Color::DarkGray)))
+        help_line()
     };
     frame.render_widget(Paragraph::new(line), area);
 }
