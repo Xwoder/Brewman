@@ -270,8 +270,8 @@ impl App {
                 if let Some(&idx) = self.filtered.get(i) {
                     let pkg = self.packages[idx].clone();
                     let cmd = match pkg.kind {
-                        Kind::Formula => format!("brew upgrade {}", pkg.name),
-                        Kind::Cask => format!("brew upgrade --cask {}", pkg.name),
+                        Kind::Formula => format!("brew upgrade {} --yes", pkg.name),
+                        Kind::Cask => format!("brew upgrade --cask {} --yes", pkg.name),
                     };
                     self.exit_command = Some(self.make_exit_command(&cmd));
                 }
@@ -289,7 +289,7 @@ impl App {
                 }
             }
             PendingAction::UpgradeAll => {
-                self.exit_command = Some(self.make_exit_command("brew upgrade --greedy"));
+                self.exit_command = Some(self.make_exit_command("brew upgrade --greedy --yes"));
             }
             PendingAction::UpgradeSelected(pkgs) => {
                 let cmd = build_upgrade_command(&pkgs);
@@ -616,10 +616,10 @@ fn build_upgrade_command(pkgs: &[(String, Kind)]) -> String {
         .collect();
     let mut lines = Vec::new();
     if !formulae.is_empty() {
-        lines.push(format!("brew upgrade {}", formulae.join(" ")));
+        lines.push(format!("brew upgrade {} --yes", formulae.join(" ")));
     }
     if !casks.is_empty() {
-        lines.push(format!("brew upgrade --cask {}", casks.join(" ")));
+        lines.push(format!("brew upgrade --cask {} --yes", casks.join(" ")));
     }
     lines.join("\n")
 }
