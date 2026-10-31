@@ -1,7 +1,8 @@
 use std::collections::{BTreeSet, VecDeque};
 use std::sync::mpsc::{Receiver, Sender};
 
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
+use ratatui::layout::{Position, Rect};
 
 use crate::brew::{Job, Msg};
 use crate::model::{Kind, Package};
@@ -137,6 +138,8 @@ pub struct App {
     /// 当前类别下可见的包在 packages 中的索引
     pub filtered: Vec<usize>,
     pub tab: Tab,
+    /// 顶部类别 Tab 的可点击矩形区域（由 draw 计算并填充），用于鼠标命中检测
+    pub tab_rects: [Rect; 3],
     pub selected: usize,
     /// 被选中的包（packages 索引，Space 键切换）
     pub selected_set: BTreeSet<usize>,
@@ -173,6 +176,7 @@ impl App {
             packages: Vec::new(),
             filtered: Vec::new(),
             tab: Tab::All,
+            tab_rects: [Rect::default(); 3],
             selected: 0,
             selected_set: BTreeSet::new(),
             detail_scroll: 0,
@@ -493,6 +497,33 @@ impl App {
         self.selected = 0;
         self.detail_scroll = 0;
         self.apply_filter();
+    }
+
+    /// 处理鼠标事件：左键点击顶部类别 Tab 时切换对应面板
+    pub fn on_mouse(&mut self, m: MouseEvent) {
+        // 仅在左键按下时响应；弹窗打开时不拦截鼠标
+        if m.kind != MouseEventKind::Down(MouseButton::Left) {
+            return;
+        }
+        if self.confirm.is_some() || self.mirror_picker {
+            return;
+        }
+        for (i, rect) in self.tab_rects.iter().enumerate() {
+            if rect.contains(Position {
+                x: m.column,
+                y: m.row,
+            }) {
+                let tab = match i {
+                    0 => Tab::All,
+                    1 => Tab::Formula,
+                    _ => Tab::Cask,
+                };
+                if self.tab != tab {
+                    self.set_tab(tab);
+                }
+                return;
+            }
+        }
     }
 
     /// 处理后台线程发来的消息

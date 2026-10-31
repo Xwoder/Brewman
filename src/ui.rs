@@ -34,7 +34,7 @@ fn help_line() -> Line<'static> {
     Line::from(spans)
 }
 
-pub fn draw(frame: &mut Frame, app: &App) {
+pub fn draw(frame: &mut Frame, app: &mut App) {
     let area = frame.area();
     let chunks = Layout::vertical([
         Constraint::Length(3),
@@ -118,7 +118,7 @@ fn centered_popup(height: u16, area: Rect) -> Rect {
 
 // ---------- 顶部 ----------
 
-fn draw_top(frame: &mut Frame, app: &App, area: Rect) {
+fn draw_top(frame: &mut Frame, app: &mut App, area: Rect) {
     let rows = Layout::vertical([
         Constraint::Length(1),
         Constraint::Length(1),
@@ -151,23 +151,46 @@ fn draw_top(frame: &mut Frame, app: &App, area: Rect) {
     // 第二行：类别 Tabs + 忙碌指示
     let line2 =
         Layout::horizontal([Constraint::Percentage(70), Constraint::Percentage(30)]).split(rows[1]);
-    let tabs = Tabs::new([
+
+    let formula_count = app
+        .packages
+        .iter()
+        .filter(|p| p.kind == Kind::Formula)
+        .count();
+    let cask_count = app
+        .packages
+        .iter()
+        .filter(|p| p.kind == Kind::Cask)
+        .count();
+    let titles = [
         format!("All ({})", app.packages.len()),
-        format!(
-            "Formulae ({})",
-            app.packages
-                .iter()
-                .filter(|p| p.kind == Kind::Formula)
-                .count()
-        ),
-        format!(
-            "Casks ({})",
-            app.packages
-                .iter()
-                .filter(|p| p.kind == Kind::Cask)
-                .count()
-        ),
-    ])
+        format!("Formulae ({formula_count})"),
+        format!("Casks ({cask_count})"),
+    ];
+
+    // 计算每个 Tab 的可点击区域（与 ratatui Tabs 渲染布局一致）：
+    // 默认左右内边距各 1 空格、分隔符 "│" 宽 1。标签为纯 ASCII，字符数即显示宽度。
+    {
+        let tabs_area = line2[0];
+        let mut x = tabs_area.left();
+        let count = titles.len();
+        for (i, t) in titles.iter().enumerate() {
+            let title_w = t.chars().count() as u16;
+            let left_w = 1u16;
+            let right_w = 1u16;
+            let div_w = if i + 1 < count { 1 } else { 0 };
+            let remaining = tabs_area.right().saturating_sub(x);
+            if remaining == 0 {
+                break;
+            }
+            // 仅标签与左右内边距计入可点击区；分隔符不计入，避免相邻 Tab 区域重叠
+            let click_w = (left_w + title_w + right_w).min(remaining);
+            app.tab_rects[i] = Rect::new(x, tabs_area.top(), click_w, 1);
+            x = x.saturating_add((left_w + title_w + right_w + div_w).min(remaining));
+        }
+    }
+
+    let tabs = Tabs::new(titles)
         .select(app.tab.index())
         .style(Style::default().fg(Color::DarkGray))
         .highlight_style(

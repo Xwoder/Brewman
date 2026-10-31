@@ -9,7 +9,9 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
-use crossterm::event::{self, Event, KeyEventKind};
+use crossterm::event::{
+    self, DisableMouseCapture, EnableMouseCapture, Event, KeyEventKind, MouseButton, MouseEventKind,
+};
 use crossterm::style::Stylize;
 use ratatui::DefaultTerminal;
 
@@ -30,11 +32,15 @@ fn main() -> io::Result<()> {
     thread::spawn(move || brew::worker(job_rx, msg_tx));
 
     let mut terminal = ratatui::init();
+    // 开启鼠标捕获，使顶部类别面板支持鼠标点击切换
+    crossterm::execute!(std::io::stdout(), EnableMouseCapture)?;
     let mut app = App::new(job_tx, msg_rx);
     app.request_load();
 
     let result = run_loop(&mut terminal, &mut app);
 
+    // 退出前关闭鼠标捕获，恢复正常鼠标行为
+    let _ = crossterm::execute!(std::io::stdout(), DisableMouseCapture);
     ratatui::restore();
 
     // 升级操作不在程序内执行：退出后在前台运行 brew upgrade，
@@ -69,12 +75,19 @@ fn run_loop(terminal: &mut DefaultTerminal, app: &mut App) -> io::Result<()> {
     loop {
         terminal.draw(|frame| ui::draw(frame, app))?;
 
-        if event::poll(Duration::from_millis(100))?
-            && let Event::Key(key) = event::read()?
-            && key.kind == KeyEventKind::Press
-            && app.on_key(key)
-        {
-            break;
+        if event::poll(Duration::from_millis(100))? {
+            match event::read()? {
+                Event::Key(key) if key.kind == KeyEventKind::Press => {
+                    if app.on_key(key) {
+                        break;
+                    }
+                }
+                // 仅响应左键按下，用于点击顶部类别面板
+                Event::Mouse(m) if matches!(m.kind, MouseEventKind::Down(MouseButton::Left)) => {
+                    app.on_mouse(m);
+                }
+                _ => {}
+            }
         }
         app.poll_messages();
 
