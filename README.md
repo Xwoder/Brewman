@@ -14,15 +14,16 @@ Brewman is a terminal user interface (TUI) built with **Rust + Ratatui** for man
 - **Live activity panel**: Bottom panel shows the command currently running, streams its real-time output (e.g. `==> Downloading`, `==> Pouring`), plus a colored history of recent results (done / failed)
 - **Safe uninstall**: Uninstalls require explicit confirmation (Y/N)
 - **Source update**: Built-in `brew update` to sync Homebrew sources and auto-refresh the list
+- **Cleanup**: Run `brew cleanup` to remove old versions and cache with the `c` shortcut
 - **Non-blocking design**: brew commands run sequentially on a background worker thread; the UI stays responsive with live status feedback
 - **Full transparency**: All command output (including errors) is shown in the details panel
 - **Vim-style navigation**: `j/k`, `↑/↓`, `g/G` for fast movement; fully keyboard-driven
 
-## UI Preview
+## UI Preview                       
 
 ```
 ┌ Brewman — Homebrew Package Manager (Formula + Cask) ────────┐
-│ All │ Formulae │ Casks │ Outdated       Installed 363   Outdated 1   Current: ollama │
+│ All (363) │ Formulae (243) │ Casks (120) │ Outdated       Installed 363   Outdated 1 │
 ├──────────────────┬──────────────────────────────────────────┤
 │ ▸ ✓ ollama 0.32.15 → 0.33.0 [outdated] │ Name     : ollama                         │
 │   ✓ abseil 20260817.0                  │ Type     : formula                       │
@@ -73,7 +74,8 @@ cargo run
 | `u` | Upgrade selected package(s) — all selected at once when any are marked |
 | `a` | Upgrade all outdated packages |
 | `x` (or `d`) | Uninstall selected package |
-| `r` | Update sources (`brew update`) |
+| `r` | Update (`brew update`) |
+| `c` | Clean (`brew cleanup`) |
 | `l` | Reload package list |
 | `PgUp` / `PgDn` | Scroll the details panel |
 | `q` / `Ctrl-C` | Quit |
