@@ -26,7 +26,7 @@ fn help_line() -> Line<'static> {
     add("u", "Upgrade");
     add("a", "Upgrade all");
     add("x", "Uninstall");
-    add("c", "Clean up");
+    add("c", "Clean");
     add("m", "Mirror");
     add("l", "Reload");
     add("q", "Quit");
