@@ -151,7 +151,24 @@ fn draw_top(frame: &mut Frame, app: &App, area: Rect) {
     // 第二行：类别 Tabs + 忙碌指示
     let line2 =
         Layout::horizontal([Constraint::Percentage(70), Constraint::Percentage(30)]).split(rows[1]);
-    let tabs = Tabs::new(["All", "Formulae", "Casks", "Outdated"])
+    let tabs = Tabs::new([
+        format!("All ({})", app.packages.len()),
+        format!(
+            "Formulae ({})",
+            app.packages
+                .iter()
+                .filter(|p| p.kind == Kind::Formula)
+                .count()
+        ),
+        format!(
+            "Casks ({})",
+            app.packages
+                .iter()
+                .filter(|p| p.kind == Kind::Cask)
+                .count()
+        ),
+        "Outdated".to_string(),
+    ])
         .select(app.tab.index())
         .style(Style::default().fg(Color::DarkGray))
         .highlight_style(
