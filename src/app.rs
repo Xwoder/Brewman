@@ -140,6 +140,8 @@ pub struct App {
     pub tab: Tab,
     /// 顶部类别 Tab 的可点击矩形区域（由 draw 计算并填充），用于鼠标命中检测
     pub tab_rects: [Rect; 3],
+    /// 左侧包列表的可见区域（由 draw 计算并填充），用于鼠标点击选中行
+    pub list_area: Rect,
     pub selected: usize,
     /// 被选中的包（packages 索引，Space 键切换）
     pub selected_set: BTreeSet<usize>,
@@ -177,6 +179,7 @@ impl App {
             filtered: Vec::new(),
             tab: Tab::All,
             tab_rects: [Rect::default(); 3],
+            list_area: Rect::default(),
             selected: 0,
             selected_set: BTreeSet::new(),
             detail_scroll: 0,
@@ -499,7 +502,7 @@ impl App {
         self.apply_filter();
     }
 
-    /// 处理鼠标事件：左键点击顶部类别 Tab 时切换对应面板
+    /// 处理鼠标事件：左键点击顶部类别 Tab 切换面板，点击左侧包列表选中对应行
     pub fn on_mouse(&mut self, m: MouseEvent) {
         // 仅在左键按下时响应；弹窗打开时不拦截鼠标
         if m.kind != MouseEventKind::Down(MouseButton::Left) {
@@ -508,6 +511,7 @@ impl App {
         if self.confirm.is_some() || self.mirror_picker {
             return;
         }
+        // 1) 顶部类别 Tab
         for (i, rect) in self.tab_rects.iter().enumerate() {
             if rect.contains(Position {
                 x: m.column,
@@ -522,6 +526,40 @@ impl App {
                     self.set_tab(tab);
                 }
                 return;
+            }
+        }
+        // 2) 左侧包列表：点击行选中（移动高亮）；点击行首复选框切换勾选
+        let la = self.list_area;
+        if !la.is_empty()
+            && m.column >= la.left()
+            && m.column < la.right()
+            && m.row >= la.top()
+            && m.row < la.bottom()
+        {
+            let n = self.filtered.len();
+            let h = la.height as usize;
+            // 与 ratatui List 渲染一致：保持当前选中项可见的滚动偏移
+            let first = if n <= h {
+                0
+            } else {
+                self.selected
+                    .saturating_sub(h.saturating_sub(1))
+                    .min(n - h)
+            };
+            let r = (m.row - la.top()) as usize;
+            let idx = first + r;
+            if idx < n {
+                let pkg_i = self.filtered[idx];
+                // 复选框位于行首 "▸ " 前缀（宽 2）之后的 4 列：[✓]/[ ]
+                let on_checkbox =
+                    m.column >= la.left() + 2 && m.column < la.left() + 6;
+                if on_checkbox {
+                    if !self.selected_set.remove(&pkg_i) {
+                        self.selected_set.insert(pkg_i);
+                    }
+                }
+                self.selected = idx;
+                self.detail_scroll = 0;
             }
         }
     }

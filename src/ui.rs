@@ -222,14 +222,22 @@ fn draw_top(frame: &mut Frame, app: &mut App, area: Rect) {
 
 // ---------- 中部 ----------
 
-fn draw_middle(frame: &mut Frame, app: &App, area: Rect) {
+fn draw_middle(frame: &mut Frame, app: &mut App, area: Rect) {
     let cols =
         Layout::horizontal([Constraint::Percentage(60), Constraint::Percentage(40)]).split(area);
     draw_package_list(frame, app, cols[0]);
     draw_detail(frame, app, cols[1]);
 }
 
-fn draw_package_list(frame: &mut Frame, app: &App, area: Rect) {
+fn draw_package_list(frame: &mut Frame, app: &mut App, area: Rect) {
+    // 记录列表可见区域（带边框 Block 的内区），供鼠标点击命中检测
+    app.list_area = Rect::new(
+        area.x + 1,
+        area.y + 1,
+        area.width.saturating_sub(2),
+        area.height.saturating_sub(2),
+    );
+
     let items: Vec<ListItem> = app
         .filtered
         .iter()
