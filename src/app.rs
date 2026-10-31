@@ -12,7 +12,6 @@ pub enum Tab {
     All,
     Formula,
     Cask,
-    Outdated,
 }
 
 impl Tab {
@@ -21,23 +20,20 @@ impl Tab {
             Tab::All => 0,
             Tab::Formula => 1,
             Tab::Cask => 2,
-            Tab::Outdated => 3,
         }
     }
     pub fn next(&self) -> Tab {
         match self {
             Tab::All => Tab::Formula,
             Tab::Formula => Tab::Cask,
-            Tab::Cask => Tab::Outdated,
-            Tab::Outdated => Tab::All,
+            Tab::Cask => Tab::All,
         }
     }
     pub fn prev(&self) -> Tab {
         match self {
-            Tab::All => Tab::Outdated,
+            Tab::All => Tab::Cask,
             Tab::Formula => Tab::All,
             Tab::Cask => Tab::Formula,
-            Tab::Outdated => Tab::Cask,
         }
     }
 }
@@ -233,11 +229,10 @@ impl App {
             .packages
             .iter()
             .enumerate()
-            .filter(|(_, p)| match self.tab {
+            .filter(|(_, p)|             match self.tab {
                 Tab::All => true,
                 Tab::Formula => p.kind == Kind::Formula,
                 Tab::Cask => p.kind == Kind::Cask,
-                Tab::Outdated => p.outdated,
             })
             .map(|(i, _)| i)
             .collect();
@@ -396,9 +391,6 @@ impl App {
             KeyCode::Char('1') => self.set_tab(Tab::All),
             KeyCode::Char('2') => self.set_tab(Tab::Formula),
             KeyCode::Char('3') => self.set_tab(Tab::Cask),
-            KeyCode::Char('4') | KeyCode::Char('o') | KeyCode::Char('O') => {
-                self.set_tab(Tab::Outdated)
-            }
             KeyCode::Char('u') | KeyCode::Char('U') => {
                 if !self.selected_set.is_empty() {
                     // 有选中项：统一升级选中的包

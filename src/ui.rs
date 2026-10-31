@@ -167,7 +167,6 @@ fn draw_top(frame: &mut Frame, app: &App, area: Rect) {
                 .filter(|p| p.kind == Kind::Cask)
                 .count()
         ),
-        "Outdated".to_string(),
     ])
         .select(app.tab.index())
         .style(Style::default().fg(Color::DarkGray))
