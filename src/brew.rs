@@ -10,6 +10,8 @@ pub enum Job {
     Load,
     /// 更新 Homebrew 软件源（brew update），完成后重新加载
     Update,
+    /// 清理旧版本与缓存（brew cleanup），完成后重新加载
+    Clean,
     /// 卸载单个包
     Uninstall { name: String, kind: Kind },
 }
@@ -62,6 +64,13 @@ pub fn worker(job_rx: Receiver<Job>, msg_tx: Sender<Msg>) {
                 let _ = msg_tx.send(Msg::Loading);
                 let label = "Update software sources (brew update)".to_string();
                 let (ok, output) = to_pair(exec_streamed(&["update".to_string()], &msg_tx));
+                let _ = msg_tx.send(Msg::Done { label, ok, output });
+                let _ = msg_tx.send(Msg::Reload);
+            }
+            Job::Clean => {
+                let _ = msg_tx.send(Msg::Loading);
+                let label = "Clean up (brew cleanup)".to_string();
+                let (ok, output) = to_pair(exec_streamed(&["cleanup".to_string()], &msg_tx));
                 let _ = msg_tx.send(Msg::Done { label, ok, output });
                 let _ = msg_tx.send(Msg::Reload);
             }

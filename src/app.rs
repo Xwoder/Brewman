@@ -465,6 +465,11 @@ impl App {
                 self.status = "Syncing Homebrew software sources...".into();
                 let _ = self.job_tx.send(Job::Update);
             }
+            KeyCode::Char('c') | KeyCode::Char('C') if self.busy.is_none() => {
+                self.busy = Some("Cleaning up (brew cleanup)...".into());
+                self.status = "Removing old versions and cleaning up caches...".into();
+                let _ = self.job_tx.send(Job::Clean);
+            }
             // m：选择本次升级所使用的镜像源
             KeyCode::Char('m') | KeyCode::Char('M') => {
                 self.mirror_picker = true;
@@ -538,18 +543,28 @@ impl App {
                         }
                     }
                     self.status = format!("{} package(s) outdated", self.outdated_count);
+                    // 过时标志更新后需重新过滤：若用户在列表加载完成前已切到
+                    // Outdated 标签，Packages 消息过滤时 outdated 仍为 false，此处
+                    // 不刷新会导致该标签始终空白。暂存选中项避免被 apply_filter 清空。
+                    let saved = std::mem::take(&mut self.selected_set);
+                    self.apply_filter();
+                    self.selected_set = saved;
                 }
                 Msg::Done { label, ok, output } => {
                     self.busy = None;
                     self.progress.clear();
+                    // 维护类命令（update/clean/uninstall）的输出不再写入右侧 Details
+                    // 面板，以免挤占选中包的版本信息；结果只保留在底部活动历史中。
                     if ok {
-                        self.last_output = Some(summarize(&output, 300));
                         self.status = format!("{label} completed successfully");
                         self.push_activity(ActivityKind::Done, format!("{label} completed"));
                     } else {
-                        self.last_error = Some(summarize(&output, 500));
-                        self.status = format!("{label} failed (see right panel for details)");
-                        self.push_activity(ActivityKind::Failed, format!("{label} failed"));
+                        let summary = summarize(&output, 200);
+                        self.status = format!("{label} failed");
+                        self.push_activity(
+                            ActivityKind::Failed,
+                            format!("{label} failed: {summary}"),
+                        );
                     }
                 }
                 Msg::Reload => {

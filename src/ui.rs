@@ -22,10 +22,11 @@ fn help_line() -> Line<'static> {
     add("↑/↓/j/k", "Navigate");
     add("Space", "Select");
     add("Tab", "Switch view");
+    add("r", "Update");
     add("u", "Upgrade");
     add("a", "Upgrade all");
     add("x", "Uninstall");
-    add("r", "Update sources");
+    add("c", "Clean up");
     add("m", "Mirror");
     add("l", "Reload");
     add("q", "Quit");
@@ -38,7 +39,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
     let chunks = Layout::vertical([
         Constraint::Length(3),
         Constraint::Min(0),
-        Constraint::Length(8),
+        Constraint::Length(10),
         Constraint::Length(1),
     ])
     .split(area);
@@ -136,16 +137,11 @@ fn draw_top(frame: &mut Frame, app: &App, area: Rect) {
     )));
     frame.render_widget(title, line1[0]);
 
-    let current = app
-        .current()
-        .map(|p| p.name.clone())
-        .unwrap_or_else(|| "—".into());
     let stats = Paragraph::new(Line::from(Span::styled(
         format!(
-            "Installed {}   Outdated {}   Current: {}",
+            "Installed {}   Outdated {}",
             app.packages.len(),
             app.outdated_count,
-            current
         ),
         Style::default().fg(Color::DarkGray),
     )))
