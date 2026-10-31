@@ -6,9 +6,8 @@ Brewman is a terminal user interface (TUI) built with **Rust + Ratatui** for man
 
 ## Features
 
-- **Unified package view**: Switch between All / Formulae / Casks / Outdated with `Tab` (or `1` / `2` / `3` / `4` / `o`)
+- **Unified package view**: Switch between All / Formulae / Casks with `Tab` (or `1` / `2` / `3`)
 - **Clear version display**: Shows current, latest, and candidate versions for every package (HEAD builds, multiple installed versions)
-- **Outdated-only view**: Filter the list to show only outdated packages (including auto-updates casks and `:latest`/HEAD installs, via `brew outdated --greedy`)
 - **One-key upgrades**: Upgrade a single package, a multi-selected group, or all outdated packages at once (with confirmation prompts)
 - **Batch selection**: Mark multiple packages with `Space` and upgrade them together with a single `u` (formulae and casks are grouped into separate `brew upgrade` calls)
 - **Live activity panel**: Bottom panel shows the command currently running, streams its real-time output (e.g. `==> Downloading`, `==> Pouring`), plus a colored history of recent results (done / failed)
@@ -23,7 +22,7 @@ Brewman is a terminal user interface (TUI) built with **Rust + Ratatui** for man
 
 ```
 ┌ Brewman — Homebrew Package Manager (Formula + Cask) ────────┐
-│ All (363) │ Formulae (243) │ Casks (120) │ Outdated       Installed 363   Outdated 1 │
+│ All (363) │ Formulae (243) │ Casks (120)       Installed 363   Outdated 1 │
 ├──────────────────┬──────────────────────────────────────────┤
 │ ▸ ✓ ollama 0.32.15 → 0.33.0 [outdated] │ Name     : ollama                         │
 │   ✓ abseil 20260817.0                  │ Type     : formula                       │
@@ -69,7 +68,7 @@ cargo run
 |-----|--------|
 | `↑` / `↓` or `j` / `k` | Navigate selection |
 | `g` / `G` | Jump to top / bottom of the list |
-| `Tab` (or `1` `2` `3` `4` / `o`) | Switch All / Formulae / Casks / Outdated |
+| `Tab` (or `1` `2` `3`) | Switch All / Formulae / Casks |
 | `Space` | Select / deselect the current package (for batch upgrade) |
 | `u` | Upgrade selected package(s) — all selected at once when any are marked |
 | `a` | Upgrade all outdated packages |
