@@ -138,8 +138,12 @@ pub struct App {
     /// 当前类别下可见的包在 packages 中的索引
     pub filtered: Vec<usize>,
     pub tab: Tab,
+    /// 是否只显示过时的库（与当前类别取交集）
+    pub show_outdated_only: bool,
     /// 顶部类别 Tab 的可点击矩形区域（由 draw 计算并填充），用于鼠标命中检测
     pub tab_rects: [Rect; 3],
+    /// 顶部 "only outdated" 复选框的可点击矩形区域（由 draw 计算并填充）
+    pub outdated_only_rect: Rect,
     /// 左侧包列表的可见区域（由 draw 计算并填充），用于鼠标点击选中行
     pub list_area: Rect,
     pub selected: usize,
@@ -178,7 +182,9 @@ impl App {
             packages: Vec::new(),
             filtered: Vec::new(),
             tab: Tab::All,
+            show_outdated_only: false,
             tab_rects: [Rect::default(); 3],
+            outdated_only_rect: Rect::default(),
             list_area: Rect::default(),
             selected: 0,
             selected_set: BTreeSet::new(),
@@ -236,10 +242,14 @@ impl App {
             .packages
             .iter()
             .enumerate()
-            .filter(|(_, p)|             match self.tab {
-                Tab::All => true,
-                Tab::Formula => p.kind == Kind::Formula,
-                Tab::Cask => p.kind == Kind::Cask,
+            .filter(|(_, p)| {
+                let tab_ok = match self.tab {
+                    Tab::All => true,
+                    Tab::Formula => p.kind == Kind::Formula,
+                    Tab::Cask => p.kind == Kind::Cask,
+                };
+                let outdated_ok = !self.show_outdated_only || p.outdated;
+                tab_ok && outdated_ok
             })
             .map(|(i, _)| i)
             .collect();
@@ -481,6 +491,7 @@ impl App {
                 self.request_load();
                 self.status = "Reloading package list...".into();
             }
+            KeyCode::Char('o') | KeyCode::Char('O') => self.toggle_outdated_only(),
             _ => {}
         }
         false
@@ -502,6 +513,19 @@ impl App {
         self.apply_filter();
     }
 
+    /// 切换"只显示过时库"过滤器，并保留已勾选的包
+    fn toggle_outdated_only(&mut self) {
+        self.show_outdated_only = !self.show_outdated_only;
+        let saved = std::mem::take(&mut self.selected_set);
+        self.apply_filter();
+        self.selected_set = saved;
+        self.status = if self.show_outdated_only {
+            "Filter: showing outdated packages only".into()
+        } else {
+            "Filter: showing all packages".into()
+        };
+    }
+
     /// 处理鼠标事件：左键点击顶部类别 Tab 切换面板，点击左侧包列表选中对应行
     pub fn on_mouse(&mut self, m: MouseEvent) {
         // 仅在左键按下时响应；弹窗打开时不拦截鼠标
@@ -511,6 +535,17 @@ impl App {
         if self.confirm.is_some() || self.mirror_picker {
             return;
         }
+        // 0) 顶部 "only outdated" 复选框
+        if !self.outdated_only_rect.is_empty()
+            && m.column >= self.outdated_only_rect.left()
+            && m.column < self.outdated_only_rect.right()
+            && m.row >= self.outdated_only_rect.top()
+            && m.row < self.outdated_only_rect.bottom()
+        {
+            self.toggle_outdated_only();
+            return;
+        }
+
         // 1) 顶部类别 Tab
         for (i, rect) in self.tab_rects.iter().enumerate() {
             if rect.contains(Position {

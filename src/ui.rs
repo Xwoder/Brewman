@@ -29,6 +29,7 @@ fn help_line() -> Line<'static> {
     add("c", "Clean");
     add("m", "Mirror");
     add("l", "Reload");
+    add("o", "Outdated");
     add("q", "Quit");
     spans.pop(); // 去掉末尾的 "| "
     Line::from(spans)
@@ -148,9 +149,13 @@ fn draw_top(frame: &mut Frame, app: &mut App, area: Rect) {
     .alignment(Alignment::Right);
     frame.render_widget(stats, line1[1]);
 
-    // 第二行：类别 Tabs + 忙碌指示
-    let line2 =
-        Layout::horizontal([Constraint::Percentage(70), Constraint::Percentage(30)]).split(rows[1]);
+    // 第二行：类别 Tabs + "only outdated" 复选框 + 忙碌指示
+    let line2 = Layout::horizontal([
+        Constraint::Percentage(60),
+        Constraint::Length(20),
+        Constraint::Percentage(40),
+    ])
+    .split(rows[1]);
 
     let formula_count = app
         .packages
@@ -201,13 +206,40 @@ fn draw_top(frame: &mut Frame, app: &mut App, area: Rect) {
         .divider("│");
     frame.render_widget(tabs, line2[0]);
 
+    // "only outdated" 复选框：展示/切换是否只显示过时的库
+    {
+        let cb_area = line2[1];
+        let active = app.show_outdated_only;
+        let mark = if active { "[✓]" } else { "[ ]" };
+        let cb_style = if active {
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(Color::DarkGray)
+        };
+        let cb = Paragraph::new(Line::from(vec![
+            Span::styled(mark, cb_style),
+            Span::styled(
+                " outdated only",
+                if active {
+                    Style::default().fg(Color::Yellow)
+                } else {
+                    Style::default().fg(Color::DarkGray)
+                },
+            ),
+        ]));
+        frame.render_widget(cb, cb_area);
+        app.outdated_only_rect = cb_area;
+    }
+
     if let Some(busy) = &app.busy {
         let p = Paragraph::new(Line::from(Span::styled(
             format!("[Busy] {busy}"),
             Style::default().fg(Color::Yellow),
         )))
         .alignment(Alignment::Right);
-        frame.render_widget(p, line2[1]);
+        frame.render_widget(p, line2[2]);
     }
 
     // 第三行：状态信息
