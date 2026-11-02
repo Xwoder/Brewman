@@ -31,13 +31,23 @@ cd Brewman
 cargo install --locked --color=always --path . --profile release
 ```
 
-The `brewman` command will be added to your PATH (`/opt/homebrew/bin`) and can be run from any terminal:
+The `brewman` command will be added to your PATH (`~/.cargo/bin`) and can be run from any terminal:
 
 ```bash
 brewman
 ```
 
-> Note: `--root /opt/homebrew` targets the brew prefix directory. If `cargo` is not in your PATH, run `export PATH="/opt/homebrew/opt/rustup/bin:$PATH"` first.
+> Note: If `cargo` is not in your PATH, add the following line to `~/.zprofile` or `~/.zshrc`:
+>
+> ```bash
+> export PATH="$HOME/.cargo/bin:$PATH"
+> ```
+>
+> Then reload the shell config:
+>
+> ```bash
+> source ~/.zprofile   # or: source ~/.zshrc
+> ```
 
 ### Option 2: Run from source
 
