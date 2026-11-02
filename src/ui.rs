@@ -152,8 +152,8 @@ fn draw_top(frame: &mut Frame, app: &mut App, area: Rect) {
     // 第二行：类别 Tabs + "only outdated" 复选框 + 忙碌指示
     let line2 = Layout::horizontal([
         Constraint::Percentage(60),
+        Constraint::Min(0),
         Constraint::Length(20),
-        Constraint::Percentage(40),
     ])
     .split(rows[1]);
 
@@ -208,7 +208,7 @@ fn draw_top(frame: &mut Frame, app: &mut App, area: Rect) {
 
     // "only outdated" 复选框：展示/切换是否只显示过时的库
     {
-        let cb_area = line2[1];
+        let cb_area = line2[2];
         let active = app.show_outdated_only;
         let mark = if active { "[✓]" } else { "[ ]" };
         let cb_style = if active {
@@ -228,7 +228,8 @@ fn draw_top(frame: &mut Frame, app: &mut App, area: Rect) {
                     Style::default().fg(Color::DarkGray)
                 },
             ),
-        ]));
+        ]))
+        .alignment(Alignment::Right);
         frame.render_widget(cb, cb_area);
         app.outdated_only_rect = cb_area;
     }
@@ -239,7 +240,7 @@ fn draw_top(frame: &mut Frame, app: &mut App, area: Rect) {
             Style::default().fg(Color::Yellow),
         )))
         .alignment(Alignment::Right);
-        frame.render_widget(p, line2[2]);
+        frame.render_widget(p, line2[1]);
     }
 
     // 第三行：状态信息
