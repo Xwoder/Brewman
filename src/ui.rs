@@ -38,7 +38,7 @@ fn help_line() -> Line<'static> {
 pub fn draw(frame: &mut Frame, app: &mut App) {
     let area = frame.area();
     let chunks = Layout::vertical([
-        Constraint::Length(3),
+        Constraint::Length(2),
         Constraint::Min(0),
         Constraint::Length(10),
         Constraint::Length(1),
@@ -123,7 +123,6 @@ fn draw_top(frame: &mut Frame, app: &mut App, area: Rect) {
     let rows = Layout::vertical([
         Constraint::Length(1),
         Constraint::Length(1),
-        Constraint::Length(1),
     ])
     .split(area);
 
@@ -149,7 +148,7 @@ fn draw_top(frame: &mut Frame, app: &mut App, area: Rect) {
     .alignment(Alignment::Right);
     frame.render_widget(stats, line1[1]);
 
-    // 第二行：类别 Tabs + "only outdated" 复选框 + 忙碌指示
+    // 第二行：类别 Tabs + "only outdated" 复选框
     let line2 = Layout::horizontal([
         Constraint::Percentage(60),
         Constraint::Min(0),
@@ -233,24 +232,6 @@ fn draw_top(frame: &mut Frame, app: &mut App, area: Rect) {
         frame.render_widget(cb, cb_area);
         app.outdated_only_rect = cb_area;
     }
-
-    if let Some(busy) = &app.busy {
-        let p = Paragraph::new(Line::from(Span::styled(
-            format!("[Busy] {busy}"),
-            Style::default().fg(Color::Yellow),
-        )))
-        .alignment(Alignment::Right);
-        frame.render_widget(p, line2[1]);
-    }
-
-    // 第三行：状态信息
-    let status_style = if app.status.contains("failed") || app.status.contains("Error") {
-        Style::default().fg(Color::Red)
-    } else {
-        Style::default().fg(Color::Green)
-    };
-    let status = Paragraph::new(Line::from(Span::styled(app.status.clone(), status_style)));
-    frame.render_widget(status, rows[2]);
 }
 
 // ---------- 中部 ----------
@@ -542,11 +523,6 @@ fn draw_bottom(frame: &mut Frame, app: &App, area: Rect) {
             ),
             Span::styled(hint, Style::default().fg(Color::DarkGray)),
         ])
-    } else if app.busy.is_some() {
-        Line::from(Span::styled(
-            "Running brew command; list will refresh automatically when done...",
-            Style::default().fg(Color::Yellow),
-        ))
     } else {
         help_line()
     };
