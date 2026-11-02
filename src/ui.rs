@@ -126,27 +126,14 @@ fn draw_top(frame: &mut Frame, app: &mut App, area: Rect) {
     ])
     .split(area);
 
-    // 第一行：标题 + 统计
-    let line1 =
-        Layout::horizontal([Constraint::Percentage(65), Constraint::Percentage(35)]).split(rows[0]);
+    // 第一行：标题
     let title = Paragraph::new(Line::from(Span::styled(
         "Brewman — Homebrew Package Manager (Formula + Cask)",
         Style::default()
             .fg(Color::Cyan)
             .add_modifier(Modifier::BOLD),
     )));
-    frame.render_widget(title, line1[0]);
-
-    let stats = Paragraph::new(Line::from(Span::styled(
-        format!(
-            "Installed {}   Outdated {}",
-            app.packages.len(),
-            app.outdated_count,
-        ),
-        Style::default().fg(Color::DarkGray),
-    )))
-    .alignment(Alignment::Right);
-    frame.render_widget(stats, line1[1]);
+    frame.render_widget(title, rows[0]);
 
     // 第二行：类别 Tabs + "only outdated" 复选框
     let line2 = Layout::horizontal([
