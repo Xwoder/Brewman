@@ -156,7 +156,7 @@ fn draw_top(frame: &mut Frame, app: &mut App, area: Rect) {
     let titles = [
         format!("All ({})", app.packages.len()),
         format!("Formulae ({formula_count})"),
-        format!("Casks ({cask_count})"),
+        format!("Cask ({cask_count})"),
     ];
 
     // 计算每个 Tab 的可点击区域（与 ratatui Tabs 渲染布局一致）：
