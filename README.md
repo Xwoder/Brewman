@@ -18,26 +18,9 @@ Brewman is a terminal user interface (TUI) built with **Rust + Ratatui** for man
 - **Full transparency**: All command output (including errors) is shown in the details panel
 - **Vim-style navigation**: `j/k`, `↑/↓`, `g/G` for fast movement; fully keyboard-driven
 
-## UI Preview                       
+## UI Preview
 
-```
-┌ Brewman — Homebrew Package Manager (Formula + Cask) ────────┐
-│ All (363) │ Formulae (243) │ Casks (120)       Installed 363   Outdated 1 │
-├──────────────────┬──────────────────────────────────────────┤
-│ ▸ ✓ ollama 0.32.15 → 0.33.0 [outdated] │ Name     : ollama                         │
-│   ✓ abseil 20260817.0                  │ Type     : formula                       │
-│     adobe-acrobat-reader [auto-update] │ Current  : 0.32.15                       │
-│     ...                                │ Latest   : 0.33.0                        │
-│                                        │ Status   : outdated, installed on request │
-├──────────────────┴──────────────────────────────────────────┤
-│ ▶ Upgrading ollama...                                       │
-│   ==> Downloading https://ghcr.io/v2/homebrew/...           │
-│   ==> Pouring ollama--0.33.0.arm64_sonoma.bottle.tar.gz     │
-│ Upgrade ollama: 0.32.15 → 0.33.0 completed                  │
-│ brew update completed                                       │
-└─────────────────────────────────────────────────────────────┘
-↑/↓ or j/k Navigate | Space Select | Tab Switch view | u Upgrade | a Upgrade all | x Uninstall | r Update sources | l Reload | q Quit
-```
+![screenshot](screenshot/screenshot.jpg)
 
 ## Installation
 
