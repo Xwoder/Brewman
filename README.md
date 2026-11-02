@@ -28,7 +28,7 @@ Brewman is a terminal user interface (TUI) built with **Rust + Ratatui** for man
 
 ```bash
 cd Brewman
-cargo install --path . --root /opt/homebrew
+cargo install --locked --color=always --path . --profile release
 ```
 
 The `brewman` command will be added to your PATH (`/opt/homebrew/bin`) and can be run from any terminal:
