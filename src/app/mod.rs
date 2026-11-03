@@ -6,7 +6,8 @@
 //! - `actions`：确认操作执行、镜像源设置与升级命令生成。
 
 pub mod actions;
+pub mod commands;
 pub mod events;
 pub mod state;
 
-pub use state::{ActivityKind, App, ExitCommand, Mirror, PendingAction, Tab};
+pub use state::{ActivityKind, App, CommandAction, ExitCommand, Mirror, PendingAction, Tab};

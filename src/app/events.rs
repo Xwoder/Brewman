@@ -3,7 +3,7 @@ use crossterm::event::{
 };
 use ratatui::layout::Position;
 
-use crate::app::{App, Mirror, PendingAction, Tab};
+use crate::app::{App, CommandAction, Mirror, PendingAction, Tab};
 use crate::brew::Job;
 use crate::model::Kind;
 
@@ -57,6 +57,16 @@ impl App {
             return false;
         }
 
+        // 命令面板优先处理
+        if self.command_panel {
+            return self.handle_command_panel(key);
+        }
+
+        self.handle_normal_key(key)
+    }
+
+    /// 普通模式下的按键处理
+    fn handle_normal_key(&mut self, key: KeyEvent) -> bool {
         match key.code {
             KeyCode::Char('q') | KeyCode::Char('Q') => {
                 self.should_quit = true;
@@ -167,9 +177,82 @@ impl App {
                 self.status = "Reloading package list...".into();
             }
             KeyCode::Char('o') | KeyCode::Char('O') => self.toggle_outdated_only(),
+            // p：打开命令面板（输入命令名进行匹配并执行）
+            KeyCode::Char('p') | KeyCode::Char('P') => {
+                self.command_panel = true;
+                self.command_query.clear();
+                self.command_index = 0;
+            }
             _ => {}
         }
         false
+    }
+
+    /// 关闭命令面板并清空查询状态
+    fn close_command_panel(&mut self) {
+        self.command_panel = false;
+        self.command_query.clear();
+        self.command_index = 0;
+    }
+
+    /// 命令面板模式下的按键处理（输入栏 + 命令列表导航）
+    fn handle_command_panel(&mut self, key: KeyEvent) -> bool {
+        match key.code {
+            // Esc / q：关闭面板（Esc 在某些终端会被吞掉或延迟，故额外提供 q）
+            KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('Q') => {
+                self.close_command_panel();
+            }
+            // Enter：执行当前高亮命令
+            KeyCode::Enter => {
+                let matched = crate::app::commands::matching(&self.command_query);
+                if let Some(cmd) = matched.get(self.command_index) {
+                    let action = cmd.action;
+                    self.close_command_panel();
+                    self.dispatch_action(action);
+                }
+            }
+            // 可打印字符：追加到查询字符串
+            KeyCode::Char(c) if !c.is_control() => {
+                self.command_query.push(c);
+                self.command_index = 0;
+            }
+            KeyCode::Backspace => {
+                self.command_query.pop();
+                self.command_index = 0;
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                self.command_index = self.command_index.saturating_sub(1);
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                let n = crate::app::commands::matching(&self.command_query).len();
+                if n > 0 {
+                    self.command_index = (self.command_index + 1).min(n - 1);
+                }
+            }
+            _ => {}
+        }
+        false
+    }
+
+    /// 将命令面板选中的动作派发为等价的普通按键逻辑
+    pub(crate) fn dispatch_action(&mut self, action: CommandAction) {
+        use crossterm::event::{KeyCode as KC, KeyEvent, KeyModifiers};
+        let code = match action {
+            CommandAction::Upgrade => KC::Char('u'),
+            CommandAction::UpgradeAll => KC::Char('a'),
+            CommandAction::Uninstall => KC::Char('x'),
+            CommandAction::Update => KC::Char('r'),
+            CommandAction::Clean => KC::Char('c'),
+            CommandAction::Mirror => KC::Char('m'),
+            CommandAction::Reload => KC::Char('l'),
+            CommandAction::ToggleOutdated => KC::Char('o'),
+            CommandAction::Select => KC::Char(' '),
+            CommandAction::TabAll => KC::Char('1'),
+            CommandAction::TabFormula => KC::Char('2'),
+            CommandAction::TabCask => KC::Char('3'),
+            CommandAction::Quit => KC::Char('q'),
+        };
+        let _ = self.handle_normal_key(KeyEvent::new(code, KeyModifiers::empty()));
     }
 
     /// 处理鼠标事件：左键点击顶部类别 Tab 切换面板，点击左侧包列表选中对应行
@@ -178,7 +261,7 @@ impl App {
         if m.kind != MouseEventKind::Down(MouseButton::Left) {
             return;
         }
-        if self.confirm.is_some() || self.mirror_picker {
+        if self.confirm.is_some() || self.mirror_picker || self.command_panel {
             return;
         }
         // 0) 顶部 "only outdated" 复选框

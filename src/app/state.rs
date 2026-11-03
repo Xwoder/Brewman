@@ -110,6 +110,24 @@ impl PendingAction {
     }
 }
 
+/// 命令面板中可执行的命令类型（对应普通模式下的各快捷键动作）
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CommandAction {
+    Upgrade,
+    UpgradeAll,
+    Uninstall,
+    Update,
+    Clean,
+    Mirror,
+    Reload,
+    ToggleOutdated,
+    Select,
+    TabAll,
+    TabFormula,
+    TabCask,
+    Quit,
+}
+
 pub struct Confirm {
     pub desc: String,
     pub action: PendingAction,
@@ -185,6 +203,12 @@ pub struct App {
     pub mirror_picker: bool,
     /// 镜像弹窗中当前高亮的选项索引（Mirror::ALL 下标）
     pub mirror_index: usize,
+    /// 是否显示命令面板（输入命令名并匹配执行）
+    pub command_panel: bool,
+    /// 命令面板输入栏的查询字符串
+    pub command_query: String,
+    /// 命令面板中高亮的命令索引（匹配结果中的下标）
+    pub command_index: usize,
 }
 
 impl App {
@@ -215,6 +239,9 @@ impl App {
             mirror: Mirror::Default,
             mirror_picker: false,
             mirror_index: 0,
+            command_panel: false,
+            command_query: String::new(),
+            command_index: 0,
         }
     }
 

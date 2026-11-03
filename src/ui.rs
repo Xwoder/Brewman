@@ -5,6 +5,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Clear, List, ListItem, ListState, Paragraph, Tabs, Wrap};
 
 use crate::app::{ActivityKind, App, Mirror};
+use crate::app::commands;
 use crate::model::{Kind, Package};
 
 fn help_line() -> Line<'static> {
@@ -30,6 +31,7 @@ fn help_line() -> Line<'static> {
     add("m", "Mirror");
     add("l", "Reload");
     add("o", "Outdated");
+    add("p", "Command");
     add("q", "Quit");
     spans.pop(); // 去掉末尾的 "| "
     Line::from(spans)
@@ -52,6 +54,9 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
 
     if app.mirror_picker {
         draw_mirror_picker(frame, app);
+    }
+    if app.command_panel {
+        draw_command_panel(frame, app);
     }
 }
 
@@ -106,6 +111,104 @@ fn draw_mirror_picker(frame: &mut Frame, app: &App) {
 
     let block = Block::bordered().title(" Mirror ");
     frame.render_widget(Paragraph::new(lines).block(block), popup);
+}
+
+/// 命令面板：上方输入栏（按命令名模糊匹配），下方列出匹配到的命令及作用
+fn draw_command_panel(frame: &mut Frame, app: &mut App) {
+    let area = frame.area();
+    let matched = commands::matching(&app.command_query);
+
+    // 列表高度：最多显示 14 条，至少 3 行（含无匹配提示）；整体弹窗高度随之变化
+    let list_h = (matched.len() as u16).min(14).max(3);
+    let w = area.width.saturating_sub(8).min(72);
+    let h = 4 + list_h; // 边框(2) + 输入栏(1) + 列表(list_h) + 提示(1)
+
+    let popup = Rect::new(
+        area.x + (area.width.saturating_sub(w)) / 2,
+        area.y + (area.height.saturating_sub(h)) / 2,
+        w,
+        h,
+    );
+    frame.render_widget(Clear, popup);
+
+    let block = Block::bordered().title(" Command Panel ");
+    let inner = block.inner(popup);
+    frame.render_widget(block, popup);
+
+    let chunks = Layout::vertical([
+        Constraint::Length(1),
+        Constraint::Length(list_h),
+        Constraint::Min(1),
+    ])
+    .split(inner);
+
+    // 输入栏：提示符 + 已输入的查询 + 光标
+    frame.render_widget(
+        Paragraph::new(Line::from(vec![
+            Span::styled(
+                "> ",
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                app.command_query.clone(),
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled("▏", Style::default().fg(Color::Cyan)),
+        ])),
+        chunks[0],
+    );
+
+    // 命令列表
+    let items: Vec<ListItem> = if matched.is_empty() {
+        vec![ListItem::new(Line::from(Span::styled(
+            "No matching command",
+            Style::default().fg(Color::DarkGray),
+        )))]
+    } else {
+        matched
+            .iter()
+            .map(|c| {
+                ListItem::new(Line::from(vec![
+                    Span::styled(
+                        format!("{:<14}", c.name),
+                        Style::default()
+                            .fg(Color::Yellow)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                    Span::styled(
+                        format!("({}) ", c.key),
+                        Style::default().fg(Color::Cyan),
+                    ),
+                    Span::styled(c.description, Style::default().fg(Color::DarkGray)),
+                ]))
+            })
+            .collect()
+    };
+
+    let mut state = ListState::default();
+    state.select(if matched.is_empty() {
+        None
+    } else {
+        Some(app.command_index)
+    });
+    let list = List::new(items)
+        .highlight_style(Style::default().add_modifier(Modifier::REVERSED))
+        .highlight_symbol("▸ ");
+    frame.render_stateful_widget(list, chunks[1], &mut state);
+
+    // 底部提示
+    frame.render_widget(
+        Paragraph::new(Line::from(Span::styled(
+            "↑/↓ select · Enter run · Esc/q close",
+            Style::default().fg(Color::DarkGray),
+        )))
+        .alignment(Alignment::Center),
+        chunks[2],
+    );
 }
 
 /// 固定高度的水平居中弹窗：宽度占满（左右各留 2 列），垂直居中
