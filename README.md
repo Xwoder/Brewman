@@ -1,5 +1,19 @@
 # Brewman
 
+- [Brewman](#brewman)
+  - [Features](#features)
+  - [UI Preview](#ui-preview)
+    - [Main Window](#main-window)
+    - [Command Panel](#command-panel)
+  - [Installation](#installation)
+    - [Option 1: Global install (recommended)](#option-1-global-install-recommended)
+    - [Option 2: Run from source](#option-2-run-from-source)
+  - [Key Bindings](#key-bindings)
+  - [Project Structure](#project-structure)
+  - [Testing](#testing)
+  - [Dependencies](#dependencies)
+  - [Requirements](#requirements)
+
 > Manage Homebrew formulae & casks from a fast Rust/Ratatui TUI — check versions, upgrade, and uninstall with keyboard shortcuts.
 
 Brewman is a terminal user interface (TUI) built with **Rust + Ratatui** for managing Homebrew **formulae** and **casks** on macOS. Check package versions, update software sources, upgrade, or uninstall packages — all without leaving your terminal.
