@@ -14,6 +14,7 @@ Brewman is a terminal user interface (TUI) built with **Rust + Ratatui** for man
 - **Safe uninstall**: Uninstalls require explicit confirmation (Y/N)
 - **Source update**: Built-in `brew update` to sync Homebrew sources and auto-refresh the list
 - **Cleanup**: Run `brew cleanup` to remove old versions and cache with the `c` shortcut
+- **Command Panel**: Press `p` to open a panel with an input field that fuzzy-matches command names (and their shortcuts / descriptions); the list below shows every supported command and what it does — pick one and press `Enter` to run it. Press `Esc` or `q` to close the panel.
 - **Non-blocking design**: brew commands run sequentially on a background worker thread; the UI stays responsive and streams live feedback (the running command and its output) in the activity panel
 - **Full transparency**: All command output (including errors) is shown in the details panel
 - **Vim-style navigation**: `j/k`, `↑/↓`, `g/G` for fast movement; fully keyboard-driven
@@ -71,6 +72,7 @@ cargo run
 | `l` | Reload package list |
 | `o` | Toggle "outdated only" filter (show only outdated packages) |
 | `m` | Open mirror selector for the next upgrade |
+| `p` | Open the Command Panel (type a command name to filter, then Enter to run it) |
 | `PgUp` / `PgDn` | Scroll the details panel |
 | `q` / `Ctrl-C` | Quit |
 
