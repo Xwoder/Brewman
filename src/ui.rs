@@ -174,7 +174,7 @@ fn draw_command_panel(frame: &mut Frame, app: &mut App) {
             .map(|c| {
                 ListItem::new(Line::from(vec![
                     Span::styled(
-                        format!("{:<14}", c.name),
+                        format!("{:<20}", c.name),
                         Style::default()
                             .fg(Color::Yellow)
                             .add_modifier(Modifier::BOLD),
