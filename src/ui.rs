@@ -120,7 +120,7 @@ fn draw_command_panel(frame: &mut Frame, app: &mut App) {
 
     // 列表高度：最多显示 14 条，至少 3 行（含无匹配提示）；整体弹窗高度随之变化
     let list_h = (matched.len() as u16).min(14).max(3);
-    let w = area.width.saturating_sub(8).min(72);
+    let w = area.width.saturating_sub(2).min(88);
     let h = 4 + list_h; // 边框(2) + 输入栏(1) + 列表(list_h) + 提示(1)
 
     let popup = Rect::new(
