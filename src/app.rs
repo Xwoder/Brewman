@@ -78,14 +78,15 @@ impl Mirror {
         }
     }
 
-    /// 注入环境变量的命令前缀（None 表示不注入）
-    fn env_prefix(&self) -> Option<String> {
-        self.urls().map(|(brew, core)| {
-            format!(
-                "HOMEBREW_BREW_GIT_REMOTE=\"{brew}\" \
-                 HOMEBREW_CORE_GIT_REMOTE=\"{core}\""
-            )
-        })
+    /// 镜像源需要注入的 HOMEBREW_*_GIT_REMOTE 环境变量（空表示不注入）
+    pub fn env_pairs(&self) -> Vec<(&'static str, String)> {
+        match self.urls() {
+            None => Vec::new(),
+            Some((brew, core)) => vec![
+                ("HOMEBREW_BREW_GIT_REMOTE", brew.to_string()),
+                ("HOMEBREW_CORE_GIT_REMOTE", core.to_string()),
+            ],
+        }
     }
 }
 
@@ -113,6 +114,19 @@ impl PendingAction {
 pub struct Confirm {
     pub desc: String,
     pub action: PendingAction,
+}
+
+/// 确认升级后待执行的 brew 命令集合（程序退出后由用户在终端运行）。
+/// 不再拼接 shell 字符串，而是以参数数组 + 环境变量的形式交给 brew 直接执行，
+/// 既避免 shell 注入 / 引号转义问题，也省去 `sh -c` 这层多余进程。
+#[derive(Debug, Clone)]
+pub struct ExitCommand {
+    /// 展示给用户看的命令文本（含镜像环境变量前缀，便于复核 / 复制）
+    pub display: String,
+    /// 每次 brew 调用的参数数组（一条命令对应一组 args）
+    pub invocations: Vec<Vec<String>>,
+    /// 需要注入的环境变量（镜像源相关，可为空）
+    pub envs: Vec<(&'static str, String)>,
 }
 
 /// 活动日志的类型（用于 UI 着色）
@@ -164,8 +178,8 @@ pub struct App {
     pub activities: VecDeque<Activity>,
     /// 当前命令的实时输出行（最新在尾部，UI 显示最近几行）
     pub progress: VecDeque<String>,
-    /// 确认升级后待执行的 brew upgrade 命令（程序退出后由用户在系统终端执行）
-    pub exit_command: Option<String>,
+    /// 确认升级后待执行的 brew 命令集合（程序退出后由用户在终端直接执行）
+    pub exit_command: Option<ExitCommand>,
     /// 当前选中的升级镜像源
     pub mirror: Mirror,
     /// 是否显示镜像选择弹窗
@@ -281,11 +295,20 @@ impl App {
             PendingAction::Upgrade(i) => {
                 if let Some(&idx) = self.filtered.get(i) {
                     let pkg = self.packages[idx].clone();
-                    let cmd = match pkg.kind {
-                        Kind::Formula => format!("brew upgrade {} --yes", pkg.name),
-                        Kind::Cask => format!("brew upgrade --cask {} --yes", pkg.name),
+                    let args = match pkg.kind {
+                        Kind::Formula => vec![
+                            "upgrade".to_string(),
+                            pkg.name,
+                            "--yes".to_string(),
+                        ],
+                        Kind::Cask => vec![
+                            "upgrade".to_string(),
+                            "--cask".to_string(),
+                            pkg.name,
+                            "--yes".to_string(),
+                        ],
                     };
-                    self.exit_command = Some(self.make_exit_command(&cmd));
+                    self.exit_command = Some(self.make_exit_command(vec![args]));
                 }
             }
             PendingAction::Uninstall(i) => {
@@ -301,11 +324,15 @@ impl App {
                 }
             }
             PendingAction::UpgradeAll => {
-                self.exit_command = Some(self.make_exit_command("brew upgrade --greedy --yes"));
+                self.exit_command = Some(self.make_exit_command(vec![vec![
+                    "upgrade".to_string(),
+                    "--greedy".to_string(),
+                    "--yes".to_string(),
+                ]]));
             }
             PendingAction::UpgradeSelected(pkgs) => {
-                let cmd = build_upgrade_command(&pkgs);
-                self.exit_command = Some(self.make_exit_command(&cmd));
+                let invocations = build_upgrade_invocations(&pkgs);
+                self.exit_command = Some(self.make_exit_command(invocations));
             }
         }
         // 升级操作不在程序内执行：退出程序，命令交由用户在系统终端运行
@@ -314,15 +341,31 @@ impl App {
         }
     }
 
-    /// 将当前镜像源的环境变量注入到每条 brew 命令前（多行命令逐行注入）
-    fn make_exit_command(&self, cmd: &str) -> String {
-        match self.mirror.env_prefix() {
-            None => cmd.to_string(),
-            Some(prefix) => cmd
-                .lines()
-                .map(|line| format!("{prefix} {line}"))
-                .collect::<Vec<_>>()
-                .join("\n"),
+    /// 由参数数组构造待执行的升级命令：
+    /// 不再拼 shell 字符串，而是以「brew 参数数组 + 镜像环境变量」的形式存储，
+    /// 最终由 main 直接 `Command::new("brew").args(...).env(...)` 执行。
+    fn make_exit_command(&self, invocations: Vec<Vec<String>>) -> ExitCommand {
+        let envs = self.mirror.env_pairs();
+        let display = {
+            let mut lines = Vec::with_capacity(invocations.len());
+            for args in &invocations {
+                let mut s = String::new();
+                for (k, v) in &envs {
+                    s.push_str(&format!("{k}=\"{v}\" "));
+                }
+                s.push_str("brew");
+                for a in args {
+                    s.push(' ');
+                    s.push_str(a);
+                }
+                lines.push(s);
+            }
+            lines.join("\n")
+        };
+        ExitCommand {
+            display,
+            invocations,
+            envs,
         }
     }
 
@@ -714,7 +757,9 @@ fn clean_progress_line(line: &str) -> String {
 }
 
 /// 构造 brew upgrade 命令：formula 与 cask 不能混在一条命令里，需分组输出
-fn build_upgrade_command(pkgs: &[(String, Kind)]) -> String {
+/// 构造 brew upgrade 参数数组：formula 与 cask 不能混在一条命令里，需分组输出。
+/// 返回值是若干个 brew 调用的参数数组（一行命令对应一组 args）。
+fn build_upgrade_invocations(pkgs: &[(String, Kind)]) -> Vec<Vec<String>> {
     let formulae: Vec<&str> = pkgs
         .iter()
         .filter(|(_, k)| *k == Kind::Formula)
@@ -725,12 +770,18 @@ fn build_upgrade_command(pkgs: &[(String, Kind)]) -> String {
         .filter(|(_, k)| *k == Kind::Cask)
         .map(|(n, _)| n.as_str())
         .collect();
-    let mut lines = Vec::new();
+    let mut invocations = Vec::new();
     if !formulae.is_empty() {
-        lines.push(format!("brew upgrade {} --yes", formulae.join(" ")));
+        let mut args = vec!["upgrade".to_string()];
+        args.extend(formulae.iter().map(|s| s.to_string()));
+        args.push("--yes".to_string());
+        invocations.push(args);
     }
     if !casks.is_empty() {
-        lines.push(format!("brew upgrade --cask {} --yes", casks.join(" ")));
+        let mut args = vec!["upgrade".to_string(), "--cask".to_string()];
+        args.extend(casks.iter().map(|s| s.to_string()));
+        args.push("--yes".to_string());
+        invocations.push(args);
     }
-    lines.join("\n")
+    invocations
 }

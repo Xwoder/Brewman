@@ -44,24 +44,32 @@ fn main() -> io::Result<()> {
     ratatui::restore();
 
     // 升级操作不在程序内执行：退出后在前台运行 brew upgrade，
-    // 与用户自己在终端输入命令的效果一致（实时输出、可 Ctrl-C 中断）
-    if let Some(cmd) = &app.exit_command {
+    // 与用户自己在终端输入命令的效果一致（实时输出、可 Ctrl-C 中断）。
+    // 直接以参数数组 + 环境变量的方式调用 brew，不再经由 sh -c 拼接 shell 字符串。
+    if let Some(exit) = &app.exit_command {
         println!();
-        for line in cmd.lines() {
-            println!("{}", format!("$ {line}").yellow());
-            let status = Command::new("sh").arg("-c").arg(line).status();
+        for (i, args) in exit.invocations.iter().enumerate() {
+            let display_line = exit.display.lines().nth(i).unwrap_or("brew upgrade");
+            println!("{}", format!("$ {display_line}").yellow());
+            let status = Command::new("brew")
+                .args(args)
+                .envs(exit.envs.iter().map(|(k, v)| (*k, v.as_str())))
+                .status();
             match status {
                 Ok(s) if s.success() => {
-                    println!("{}", format!("[ok] {line} completed").green());
+                    println!("{}", format!("[ok] {display_line} completed").green());
                 }
                 Ok(s) => {
                     println!(
                         "{}",
-                        format!("[fail] {line} exited with code {:?}", s.code()).red()
+                        format!("[fail] {display_line} exited with code {:?}", s.code()).red()
                     );
                 }
                 Err(e) => {
-                    println!("{}", format!("[fail] {line} failed to start: {e}").red());
+                    println!(
+                        "{}",
+                        format!("[fail] {display_line} failed to start: {e}").red()
+                    );
                 }
             }
             println!();
