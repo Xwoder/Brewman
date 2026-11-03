@@ -21,7 +21,13 @@ Brewman is a terminal user interface (TUI) built with **Rust + Ratatui** for man
 
 ## UI Preview
 
-![screenshot](screenshot/screenshot.jpg)
+### Main Window
+
+![screenshot](screenshot/screenshot-mainwindow.jpg)
+
+### Command Panel
+
+![screenshot](screenshot/screenshot-commandpanel.jpg)
 
 ## Installation
 
