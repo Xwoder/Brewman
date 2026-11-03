@@ -102,11 +102,20 @@ Confirmations: Upgrade (single / multi-selected / all), and uninstall all first 
 
 ```
 src/
-├── main.rs   # Entry point + event loop (crossterm polling, non-TTY detection)
-├── app.rs    # App state, key handling, background message consumption
-├── brew.rs   # Background worker thread running brew commands sequentially (mpsc)
-├── model.rs  # Package data model + brew info/outdated JSON v2 parsing
-└── ui.rs     # Ratatui rendering (top bar / Tabs / list / details / activity panel / help bar)
+├── main.rs        # Entry point + event loop (crossterm polling, mouse, non-TTY detection,
+│                  #   plus foreground `brew upgrade` invocation after exit)
+├── model.rs       # Package data model (Kind) + brew info/outdated JSON v2 parsing
+├── ui.rs          # Ratatui rendering (top bar / Tabs / list / details / activity panel /
+│                  #   command panel / help bar)
+├── app/           # Application layer: UI state, event handling and actions
+│   ├── state.rs   # App struct, domain types (Tab / Mirror / PendingAction / ExitCommand),
+│   │              #   state management and background message consumption
+│   ├── events.rs  # Keyboard & mouse event handling (on_key / on_mouse)
+│   ├── actions.rs # Confirmation execution, mirror selection, upgrade command generation
+│   └── commands.rs# Command-panel registry (name / key / description / action + fuzzy match)
+└── brew/          # Background brew execution layer (Job/Msg protocol)
+    ├── worker.rs  # Background worker loop: consumes Job, sends Msg
+    └── commands.rs# Build & run brew commands with streaming output
 ```
 
 ## Testing
