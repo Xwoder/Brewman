@@ -77,7 +77,7 @@ pub const COMMANDS: &[CommandDef] = &[
     CommandDef {
         name: "Toggle Outdated",
         key: "o",
-        description: "Toggle the 'outdated only' filter",
+        description: "Toggle the 'Outdated only' filter",
         action: CommandAction::ToggleOutdated,
     },
     CommandDef {

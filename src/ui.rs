@@ -369,7 +369,7 @@ fn draw_top(frame: &mut Frame, app: &mut App, area: Rect) {
         let cb = Paragraph::new(Line::from(vec![
             Span::styled(mark, cb_style),
             Span::styled(
-                " outdated only",
+                " Outdated only",
                 if active {
                     Style::default().fg(Color::Yellow)
                 } else {
