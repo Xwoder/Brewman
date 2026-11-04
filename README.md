@@ -78,23 +78,23 @@ cargo run
 
 ## Key Bindings
 
-| Key | Action |
-|-----|--------|
-| `↑` / `↓` or `j` / `k` | Navigate selection |
-| `g` / `G` | Jump to top / bottom of the list |
-| `Tab` (or `1` `2` `3`) | Switch All / Formulae / Cask |
-| `Space` | Select / deselect the current package (for batch upgrade) |
-| `u` | Upgrade selected package(s) — all selected at once when any are marked |
-| `a` | Upgrade all outdated packages |
-| `x` (or `d`) | Uninstall selected package |
-| `r` | Update (`brew update`) |
-| `c` | Clean (`brew cleanup`) |
-| `l` | Reload package list |
-| `o` | Toggle "Outdated only" filter (show only outdated packages) |
-| `m` | Open mirror selector for the next upgrade |
-| `p` | Open the Command Panel (type a command name to filter, then Enter to run it) |
-| `PgUp` / `PgDn` | Scroll the details panel |
-| `q` / `Ctrl-C` | Quit |
+| Key                    | Action                                                                       |
+|------------------------|------------------------------------------------------------------------------|
+| `↑` / `↓` or `j` / `k` | Navigate selection                                                           |
+| `g` / `G`              | Jump to top / bottom of the list                                             |
+| `Tab` (or `1` `2` `3`) | Switch All / Formulae / Cask                                                 |
+| `Space`                | Select / deselect the current package (for batch upgrade)                    |
+| `u`                    | Upgrade selected package(s) — all selected at once when any are marked       |
+| `a`                    | Upgrade all outdated packages                                                |
+| `x` (or `d`)           | Uninstall selected package                                                   |
+| `r`                    | Update (`brew update`)                                                       |
+| `c`                    | Clean (`brew cleanup`)                                                       |
+| `l`                    | Reload package list                                                          |
+| `o`                    | Toggle "Outdated only" filter (show only outdated packages)                  |
+| `m`                    | Open mirror selector for the next upgrade                                    |
+| `p`                    | Open the Command Panel (type a command name to filter, then Enter to run it) |
+| `PgUp` / `PgDn`        | Scroll the details panel                                                     |
+| `q` / `Ctrl-C`         | Quit                                                                         |
 
 Confirmations: Upgrade (single / multi-selected / all), and uninstall all first prompt for confirmation (`Y` to confirm, `N` or `Esc` to cancel). Note: switching tabs or reloading the list clears the current selection.
 
