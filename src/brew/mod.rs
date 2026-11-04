@@ -15,8 +15,10 @@ pub enum Job {
     Load,
     /// 更新 Homebrew 软件源（brew update），完成后重新加载
     Update,
-    /// 清理旧版本与缓存（brew cleanup），完成后重新加载
-    Clean,
+    /// 清理旧版本与缓存（brew cleanup），`scrub` 为真时使用 `--scrub`
+    Clean { scrub: bool },
+    /// 删除整个 Homebrew 缓存目录（rm -rf "$(brew --cache)"）
+    CleanCache,
     /// 卸载单个包
     Uninstall { name: String, kind: Kind },
 }

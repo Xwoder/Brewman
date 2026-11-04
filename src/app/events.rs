@@ -3,7 +3,7 @@ use crossterm::event::{
 };
 use ratatui::layout::Position;
 
-use crate::app::{App, CommandAction, Mirror, PendingAction, Tab};
+use crate::app::{App, CleanMode, CommandAction, Mirror, PendingAction, Tab};
 use crate::brew::Job;
 use crate::model::Kind;
 
@@ -51,6 +51,31 @@ impl App {
                 }
                 KeyCode::Esc | KeyCode::Char('m') | KeyCode::Char('M') => {
                     self.mirror_picker = false;
+                }
+                _ => {}
+            }
+            return false;
+        }
+
+        // 清理方式选择弹窗优先处理
+        if self.clean_picker {
+            match key.code {
+                KeyCode::Char('1') => self.set_clean(CleanMode::Normal),
+                KeyCode::Char('2') => self.set_clean(CleanMode::Scrub),
+                KeyCode::Char('3') => self.set_clean(CleanMode::Cache),
+                KeyCode::Up | KeyCode::Char('k') => {
+                    self.clean_index = self.clean_index.saturating_sub(1);
+                }
+                KeyCode::Down | KeyCode::Char('j') => {
+                    self.clean_index = (self.clean_index + 1).min(CleanMode::ALL.len() - 1);
+                }
+                KeyCode::Enter | KeyCode::Char(' ') => {
+                    if let Some(&m) = CleanMode::ALL.get(self.clean_index) {
+                        self.set_clean(m);
+                    }
+                }
+                KeyCode::Esc | KeyCode::Char('c') | KeyCode::Char('C') => {
+                    self.clean_picker = false;
                 }
                 _ => {}
             }
@@ -160,9 +185,8 @@ impl App {
                 let _ = self.job_tx.send(Job::Update);
             }
             KeyCode::Char('c') | KeyCode::Char('C') if self.busy.is_none() => {
-                self.busy = Some("Cleaning up (brew cleanup)...".into());
-                self.status = "Removing old versions and cleaning up caches...".into();
-                let _ = self.job_tx.send(Job::Clean);
+                self.clean_picker = true;
+                self.clean_index = 0;
             }
             // m：选择本次升级所使用的镜像源
             KeyCode::Char('m') | KeyCode::Char('M') => {
@@ -261,7 +285,7 @@ impl App {
         if m.kind != MouseEventKind::Down(MouseButton::Left) {
             return;
         }
-        if self.confirm.is_some() || self.mirror_picker || self.command_panel {
+        if self.confirm.is_some() || self.mirror_picker || self.command_panel || self.clean_picker {
             return;
         }
         // 0) 顶部 "only outdated" 复选框

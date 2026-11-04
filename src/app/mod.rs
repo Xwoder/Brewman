@@ -10,4 +10,6 @@ pub mod commands;
 pub mod events;
 pub mod state;
 
-pub use state::{ActivityKind, App, CommandAction, ExitCommand, Mirror, PendingAction, Tab};
+pub use state::{
+    ActivityKind, App, CleanMode, CommandAction, ExitCommand, Mirror, PendingAction, Tab,
+};

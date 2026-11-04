@@ -59,7 +59,7 @@ pub const COMMANDS: &[CommandDef] = &[
     CommandDef {
         name: "Clean",
         key: "c",
-        description: "Clean up old versions and cache (brew cleanup)",
+        description: "Choose a cleanup mode and run brew cleanup / brew cleanup --scrub",
         action: CommandAction::Clean,
     },
     CommandDef {

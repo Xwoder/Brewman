@@ -4,7 +4,7 @@ use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Clear, List, ListItem, ListState, Paragraph, Tabs, Wrap};
 
-use crate::app::{ActivityKind, App, Mirror};
+use crate::app::{ActivityKind, App, CleanMode, Mirror};
 use crate::app::commands;
 use crate::model::{Kind, Package};
 
@@ -54,6 +54,9 @@ pub fn draw(frame: &mut Frame, app: &mut App) {
 
     if app.mirror_picker {
         draw_mirror_picker(frame, app);
+    }
+    if app.clean_picker {
+        draw_clean_picker(frame, app);
     }
     if app.command_panel {
         draw_command_panel(frame, app);
@@ -110,6 +113,62 @@ fn draw_mirror_picker(frame: &mut Frame, app: &App) {
     )));
 
     let block = Block::bordered().title(" Mirror ");
+    frame.render_widget(Paragraph::new(lines).block(block), popup);
+}
+
+/// 清理方式选择弹窗：在 brew cleanup 与 brew cleanup --scrub 之间选择
+fn draw_clean_picker(frame: &mut Frame, app: &App) {
+    let area = frame.area();
+    // 宽度与命令面板一致：左右各留 1 列，最大 88 列
+    let w = area.width.saturating_sub(2).min(88);
+    let h = 12u16.min(area.height);
+    let popup = Rect::new(
+        area.x + (area.width.saturating_sub(w)) / 2,
+        area.y + (area.height.saturating_sub(h)) / 2,
+        w,
+        h,
+    );
+    frame.render_widget(Clear, popup);
+
+    let key_style = Style::default()
+        .fg(Color::Yellow)
+        .add_modifier(Modifier::BOLD);
+    let dim = Style::default().fg(Color::DarkGray);
+
+    let mut lines: Vec<Line> = Vec::new();
+    lines.push(Line::from(Span::styled(
+        "Choose a cleanup mode:",
+        Style::default().add_modifier(Modifier::BOLD),
+    )));
+    lines.push(Line::from(""));
+
+    for (i, mode) in CleanMode::ALL.iter().enumerate() {
+        let highlighted = i == app.clean_index;
+        let style = if highlighted {
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(Color::White)
+        };
+        lines.push(Line::from(vec![
+            Span::styled(format!("{} ", i + 1), key_style),
+            Span::styled(if highlighted { "▸ " } else { "  " }, style),
+            Span::styled(mode.label(), style),
+        ]));
+        lines.push(Line::from(vec![
+            Span::styled("  ", Style::default()),
+            Span::styled(mode.description(), dim),
+        ]));
+    }
+
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(
+        "↑/↓ or j/k select · 1/2/3 pick · Enter confirm · Esc cancel",
+        dim,
+    )));
+
+    let block = Block::bordered().title(" Clean ");
     frame.render_widget(Paragraph::new(lines).block(block), popup);
 }
 

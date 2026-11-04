@@ -110,6 +110,42 @@ impl PendingAction {
     }
 }
 
+/// 清理方式（弹窗中供用户选择）
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CleanMode {
+    /// brew cleanup：移除旧版本与缓存
+    Normal,
+    /// brew cleanup --scrub：更激进地清理（包括更旧版本的下载缓存）
+    Scrub,
+    /// rm -rf "$(brew --cache)"：删除整个 Homebrew 缓存目录
+    Cache,
+}
+
+impl CleanMode {
+    /// 弹窗中展示的全部选项（顺序即数字键与上下键的索引顺序）
+    pub const ALL: [CleanMode; 3] = [CleanMode::Normal, CleanMode::Scrub, CleanMode::Cache];
+
+    /// 对应的命令标签（用于弹窗展示 / 日志）
+    pub fn label(&self) -> &'static str {
+        match self {
+            CleanMode::Normal => "brew cleanup",
+            CleanMode::Scrub => "brew cleanup --scrub",
+            CleanMode::Cache => "rm -rf \"$(brew --cache)\"",
+        }
+    }
+
+    /// 该方式的简短说明
+    pub fn description(&self) -> &'static str {
+        match self {
+            CleanMode::Normal => "Remove old versions and cache",
+            CleanMode::Scrub => {
+                "Scrub cache more aggressively (incl. downloads for older versions)"
+            }
+            CleanMode::Cache => "Delete the entire Homebrew cache directory",
+        }
+    }
+}
+
 /// 命令面板中可执行的命令类型（对应普通模式下的各快捷键动作）
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CommandAction {
@@ -203,6 +239,10 @@ pub struct App {
     pub mirror_picker: bool,
     /// 镜像弹窗中当前高亮的选项索引（Mirror::ALL 下标）
     pub mirror_index: usize,
+    /// 是否显示清理方式选择弹窗
+    pub clean_picker: bool,
+    /// 清理弹窗中当前高亮的选项索引（CleanMode::ALL 下标）
+    pub clean_index: usize,
     /// 是否显示命令面板（输入命令名并匹配执行）
     pub command_panel: bool,
     /// 命令面板输入栏的查询字符串
@@ -239,6 +279,8 @@ impl App {
             mirror: Mirror::Default,
             mirror_picker: false,
             mirror_index: 0,
+            clean_picker: false,
+            clean_index: 0,
             command_panel: false,
             command_query: String::new(),
             command_index: 0,

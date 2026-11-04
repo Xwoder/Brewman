@@ -48,13 +48,23 @@ pub(crate) fn exec(args: &[String]) -> Result<String, String> {
 /// 流式执行 brew 命令：stdout/stderr 逐行通过 Msg::Progress 实时发回 UI，
 /// 同时累积完整输出，命令结束后返回（成功 Ok(stdout)，失败 Err(stderr)）
 pub(crate) fn exec_streamed(args: &[String], tx: &Sender<Msg>) -> Result<String, String> {
-    let mut child = Command::new("brew")
+    exec_streamed_cmd("brew", args, tx)
+}
+
+/// 以参数数组形式流式执行任意外部命令（program 为可执行文件名，args 为参数列表），
+/// 不依赖 shell，避免 `sh -c` 拼接带来的引号转义 / 注入问题。
+pub(crate) fn exec_streamed_cmd(
+    program: &str,
+    args: &[String],
+    tx: &Sender<Msg>,
+) -> Result<String, String> {
+    let mut child = Command::new(program)
         .args(args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| {
-            format!("Failed to run brew: {e} (make sure Homebrew is installed and on PATH)")
+            format!("Failed to run {program}: {e} (make sure it is installed and on PATH)")
         })?;
 
     let child_stdout = child.stdout.take().expect("stdout is piped");

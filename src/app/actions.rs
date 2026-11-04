@@ -1,4 +1,4 @@
-use crate::app::{App, ExitCommand, Mirror, PendingAction};
+use crate::app::{App, CleanMode, ExitCommand, Mirror, PendingAction};
 use crate::brew::Job;
 use crate::model::Kind;
 
@@ -91,6 +91,24 @@ impl App {
         self.mirror = mirror;
         self.mirror_picker = false;
         self.status = format!("Upgrade mirror set to: {}", mirror.label());
+    }
+
+    /// 选择清理方式并立即在后台执行对应的清理命令，关闭弹窗
+    pub(crate) fn set_clean(&mut self, mode: CleanMode) {
+        self.clean_picker = false;
+        self.busy = Some(format!("Cleaning up ({})...", mode.label()));
+        self.status = match mode {
+            CleanMode::Scrub => "Scrubbing old versions and caches...".into(),
+            CleanMode::Cache => "Removing the entire Homebrew cache directory...".into(),
+            CleanMode::Normal => "Removing old versions and cleaning up caches...".into(),
+        };
+        let _ = self.job_tx.send(if mode == CleanMode::Cache {
+            Job::CleanCache
+        } else {
+            Job::Clean {
+                scrub: mode == CleanMode::Scrub,
+            }
+        });
     }
 }
 

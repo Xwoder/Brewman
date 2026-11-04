@@ -1,6 +1,6 @@
 use std::sync::mpsc::{Receiver, Sender};
 
-use crate::brew::commands::{exec_streamed, load_outdated, load_packages, to_pair};
+use crate::brew::commands::{exec, exec_streamed, exec_streamed_cmd, load_outdated, load_packages, to_pair};
 use crate::brew::{Job, Msg};
 
 /// 后台工作线程主循环：顺序执行任务（brew 命令不可并发）
@@ -33,10 +33,15 @@ pub fn worker(job_rx: Receiver<Job>, msg_tx: Sender<Msg>) {
                 let _ = msg_tx.send(Msg::Done { label, ok, output });
                 let _ = msg_tx.send(Msg::Reload);
             }
-            Job::Clean => {
+            Job::Clean { scrub } => {
                 let _ = msg_tx.send(Msg::Loading);
-                let label = "Clean up (brew cleanup)".to_string();
-                let (ok, output) = to_pair(exec_streamed(&["cleanup".to_string()], &msg_tx));
+                let args = if scrub {
+                    vec!["cleanup".to_string(), "--scrub".to_string()]
+                } else {
+                    vec!["cleanup".to_string()]
+                };
+                let label = format!("Clean up (brew {})", args.join(" "));
+                let (ok, output) = to_pair(exec_streamed(&args, &msg_tx));
                 let _ = msg_tx.send(Msg::Done { label, ok, output });
                 let _ = msg_tx.send(Msg::Reload);
             }
@@ -50,6 +55,26 @@ pub fn worker(job_rx: Receiver<Job>, msg_tx: Sender<Msg>) {
                 };
                 let label = format!("Uninstall {} (brew {})", name, args.join(" "));
                 let (ok, output) = to_pair(exec_streamed(&args, &msg_tx));
+                let _ = msg_tx.send(Msg::Done { label, ok, output });
+                let _ = msg_tx.send(Msg::Reload);
+            }
+            Job::CleanCache => {
+                let _ = msg_tx.send(Msg::Loading);
+                let label = "Remove brew cache (rm -rf \"$(brew --cache)\")".to_string();
+                // 先解析缓存目录，再以参数数组形式执行 rm，避免 sh -c 拼接带来的转义问题
+                let result = (|| -> Result<String, String> {
+                    let cache = exec(&["--cache".to_string()])?.trim().to_string();
+                    if cache.is_empty() {
+                        return Err("brew --cache returned an empty path".into());
+                    }
+                    exec_streamed_cmd(
+                        "rm",
+                        &["-rf".to_string(), cache.clone()],
+                        &msg_tx,
+                    )
+                    .map(|_| format!("Removed brew cache: {cache}"))
+                })();
+                let (ok, output) = to_pair(result);
                 let _ = msg_tx.send(Msg::Done { label, ok, output });
                 let _ = msg_tx.send(Msg::Reload);
             }
