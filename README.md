@@ -90,7 +90,7 @@ cargo run
 | `r` | Update (`brew update`) |
 | `c` | Clean (`brew cleanup`) |
 | `l` | Reload package list |
-| `o` | Toggle "outdated only" filter (show only outdated packages) |
+| `o` | Toggle "Outdated only" filter (show only outdated packages) |
 | `m` | Open mirror selector for the next upgrade |
 | `p` | Open the Command Panel (type a command name to filter, then Enter to run it) |
 | `PgUp` / `PgDn` | Scroll the details panel |
